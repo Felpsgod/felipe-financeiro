@@ -65,7 +65,7 @@ export default function ImportarPage() {
       </p>
 
       <div className="mb-5 flex flex-wrap items-center gap-3">
-        <label className="cursor-pointer rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+        <label className="btn-primary cursor-pointer">
           Escolher arquivo (.ofx / .csv)
           <input type="file" accept=".ofx,.qfx,.csv,.txt" onChange={handleFile} className="hidden" />
         </label>
@@ -94,15 +94,11 @@ export default function ImportarPage() {
         <>
           <div className="mb-3 flex items-center justify-between">
             <span className="text-sm text-slate-500">{selected} de {rows.length} selecionados</span>
-            <button
-              onClick={importAll}
-              disabled={busy || selected === 0}
-              className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
-            >
+            <button onClick={importAll} disabled={busy || selected === 0} className="btn-primary">
               {busy ? "Importando…" : `Importar ${selected}`}
             </button>
           </div>
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <div className="card overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-left text-xs uppercase text-slate-400">
                 <tr>

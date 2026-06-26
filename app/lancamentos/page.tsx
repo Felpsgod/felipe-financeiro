@@ -105,9 +105,7 @@ export default function LancamentosPage() {
             onChange={(e) => setMonth(e.target.value)}
             className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
           />
-          <button onClick={openNew} className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
-            + Novo
-          </button>
+          <button onClick={openNew} className="btn-primary">+ Novo</button>
         </div>
       </div>
 
@@ -124,7 +122,7 @@ export default function LancamentosPage() {
           Nenhum lançamento neste mês.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div className="card overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase text-slate-400">
               <tr>
@@ -199,7 +197,7 @@ export default function LancamentosPage() {
             <input type="checkbox" checked={form.paid} onChange={(e) => setForm({ ...form, paid: e.target.checked })} />
             Já pago / quitado
           </label>
-          <button type="submit" className="w-full rounded-md bg-emerald-600 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Salvar</button>
+          <button type="submit" className="btn-primary w-full">Salvar</button>
         </form>
       </Modal>
     </AppShell>

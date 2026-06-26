@@ -72,12 +72,7 @@ export default function FinanciamentosPage() {
     <AppShell>
       <div className="mb-5 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Financiamentos</h1>
-        <button
-          onClick={openNew}
-          className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-        >
-          + Novo financiamento
-        </button>
+        <button onClick={openNew} className="btn-primary">+ Novo</button>
       </div>
 
       {loading ? (
@@ -93,7 +88,7 @@ export default function FinanciamentosPage() {
             const remaining = (f.installments - f.paidInstallments) * f.installmentValue;
             const done = f.paidInstallments >= f.installments;
             return (
-              <div key={f.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div key={f.id} className="card p-4">
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="font-semibold">{f.description}</h3>
@@ -159,7 +154,7 @@ export default function FinanciamentosPage() {
           <Field label="Data da 1ª parcela">
             <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className="input" />
           </Field>
-          <button type="submit" className="w-full rounded-md bg-emerald-600 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Salvar</button>
+          <button type="submit" className="btn-primary w-full">Salvar</button>
         </form>
       </Modal>
     </AppShell>
