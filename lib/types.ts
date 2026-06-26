@@ -1,0 +1,57 @@
+// Modelos de dados do app. Todos os documentos ficam sob
+// `users/{uid}/<colecao>` no Firestore, isolando os dados por usuário.
+
+export type CardBrand = "visa" | "mastercard" | "elo" | "amex" | "hipercard" | "outro";
+
+export interface Card {
+  id: string;
+  name: string; // ex: "Nubank", "Itaú Click"
+  brand: CardBrand;
+  limit: number; // limite total
+  closingDay: number; // dia do fechamento da fatura (1-31)
+  dueDay: number; // dia do vencimento (1-31)
+  color: string; // cor para identificar visualmente (hex)
+  createdAt: number;
+}
+
+export interface Financing {
+  id: string;
+  description: string; // ex: "Financiamento do carro"
+  totalAmount: number; // valor total financiado
+  installments: number; // número total de parcelas
+  paidInstallments: number; // quantas já foram pagas
+  installmentValue: number; // valor de cada parcela
+  dueDay: number; // dia do vencimento mensal (1-31)
+  startDate: string; // YYYY-MM-DD da 1ª parcela
+  createdAt: number;
+}
+
+export type TransactionType = "expense" | "income" | "payment";
+
+export interface Transaction {
+  id: string;
+  description: string;
+  amount: number; // sempre positivo; o sinal vem do `type`
+  date: string; // YYYY-MM-DD
+  category: string;
+  type: TransactionType; // despesa, receita ou pagamento de fatura/parcela
+  cardId?: string; // se foi gasto no cartão
+  financingId?: string; // se é parcela de financiamento
+  paid: boolean; // já foi pago/quitado?
+  createdAt: number;
+}
+
+export const CATEGORIES = [
+  "Alimentação",
+  "Transporte",
+  "Moradia",
+  "Saúde",
+  "Educação",
+  "Lazer",
+  "Compras",
+  "Assinaturas",
+  "Financiamento",
+  "Fatura de cartão",
+  "Salário",
+  "Outros",
+] as const;

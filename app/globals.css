@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+}
+
+/* Estilo padrão para campos de formulário usados nas telas. */
+@layer components {
+  .input {
+    @apply w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500;
+  }
+}

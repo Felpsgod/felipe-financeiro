@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// Regras de segurança: cada usuário só pode ler/escrever os próprios dados,
+// guardados sob `users/{uid}/...`. Isso é o que protege os dados financeiros
+// num app sem servidor — sem essas regras, qualquer um leria tudo.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

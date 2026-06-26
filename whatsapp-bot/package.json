@@ -1,0 +1,11 @@
+{
+  "name": "whatsapp-bot",
+  "version": "1.0.0",
+  "description": "Webhook do WhatsApp que registra despesas no Firestore usando a Claude API",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.106.0",
+    "firebase-admin": "^14.1.0"
+  }
+}
