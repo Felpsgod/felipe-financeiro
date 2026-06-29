@@ -1,4 +1,4 @@
-import { initializeApp, getApps, cert } from "firebase-admin/app";
+import { initializeApp, getApps, getApp, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
 // Inicializa o Firebase Admin uma única vez (reaproveitado entre invocações
@@ -14,5 +14,6 @@ function init() {
 
 export function db() {
   init();
-  return getFirestore();
+  // Banco nomeado "default" (não o padrão "(default)").
+  return getFirestore(getApp(), "default");
 }

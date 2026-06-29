@@ -18,5 +18,8 @@ const firebaseConfig = {
 const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 export const auth: Auth = getAuth(app);
-export const db: Firestore = getFirestore(app);
+// Atenção: o Firestore deste projeto foi criado com o ID "default" (banco nomeado),
+// não o padrão "(default)". Por isso passamos o ID explicitamente — senão o SDK
+// procura "(default)" e dá erro "Database (default) not found".
+export const db: Firestore = getFirestore(app, "default");
 export default app;
