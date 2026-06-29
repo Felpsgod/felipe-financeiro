@@ -6,7 +6,8 @@ import Modal from "@/components/Modal";
 import { useAuth } from "@/lib/auth";
 import { useCollection } from "@/lib/useCollection";
 import { addItem, updateItem, deleteItem } from "@/lib/db";
-import { formatBRL, currentMonth } from "@/lib/format";
+import { Money } from "@/lib/money";
+import { currentMonth } from "@/lib/format";
 import type { Card, CardBrand, Transaction } from "@/lib/types";
 
 const BRANDS: { value: CardBrand; label: string }[] = [
@@ -102,12 +103,12 @@ export default function CartoesPage() {
                     <div className="h-7 w-9 rounded-md bg-white/25" />
                   </div>
                   <p className="mt-6 text-sm text-white/80">Fatura do mês</p>
-                  <p className="text-2xl font-bold">{formatBRL(spent)}</p>
+                  <p className="text-2xl font-bold"><Money value={spent} /></p>
                 </div>
                 {/* rodapé branco */}
                 <div className="bg-white p-4">
                   <div className="flex justify-between text-xs text-slate-400">
-                    <span>Limite {formatBRL(c.limit)}</span>
+                    <span>Limite <Money value={c.limit} /></span>
                     <span>Fecha {c.closingDay} · Vence {c.dueDay}</span>
                   </div>
                   <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100">

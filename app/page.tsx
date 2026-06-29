@@ -6,7 +6,8 @@ import AppShell from "@/components/AppShell";
 import QuickAdd from "@/components/QuickAdd";
 import { useAuth } from "@/lib/auth";
 import { useCollection } from "@/lib/useCollection";
-import { formatBRL, formatDate, currentMonth } from "@/lib/format";
+import { Money } from "@/lib/money";
+import { formatDate, currentMonth } from "@/lib/format";
 import type { Card, Financing, Transaction } from "@/lib/types";
 
 const CAT_STYLE: Record<string, { c: string; e: string }> = {
@@ -60,9 +61,14 @@ export default function Dashboard() {
     <AppShell>
       {/* Saudação */}
       <div className="mb-4 flex items-center gap-3">
-        <span className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-bold text-white">
-          {firstName.charAt(0).toUpperCase()}
-        </span>
+        {user?.photoURL ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={user.photoURL} alt="Perfil" className="h-11 w-11 rounded-full object-cover" referrerPolicy="no-referrer" />
+        ) : (
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-bold text-white">
+            {firstName.charAt(0).toUpperCase()}
+          </span>
+        )}
         <div>
           <p className="text-lg font-bold text-slate-800">Olá, {firstName}!</p>
           <p className="text-xs capitalize text-slate-400">{monthLabel(month)}</p>
@@ -74,15 +80,15 @@ export default function Dashboard() {
         <div className="absolute -right-8 -top-10 h-40 w-40 rounded-full bg-white/10" />
         <div className="absolute right-6 top-5 h-8 w-10 rounded-md bg-white/25" />
         <p className="text-sm text-blue-100">Saldo do mês</p>
-        <p className="mt-1 text-4xl font-bold tracking-tight">{formatBRL(s.balance)}</p>
+        <p className="mt-1 text-4xl font-bold tracking-tight"><Money value={s.balance} /></p>
         <div className="mt-5 flex gap-6 text-sm">
           <div>
             <p className="text-blue-200">↑ Entradas</p>
-            <p className="font-semibold">{formatBRL(s.income)}</p>
+            <p className="font-semibold"><Money value={s.income} /></p>
           </div>
           <div>
             <p className="text-blue-200">↓ Saídas</p>
-            <p className="font-semibold">{formatBRL(s.expense)}</p>
+            <p className="font-semibold"><Money value={s.expense} /></p>
           </div>
         </div>
       </div>
@@ -113,7 +119,7 @@ export default function Dashboard() {
                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: d.color }} />
                     {d.label}
                   </span>
-                  <span className="font-medium text-slate-700">{formatBRL(d.value)}</span>
+                  <span className="font-medium text-slate-700"><Money value={d.value} /></span>
                 </div>
               ))}
             </div>
@@ -144,8 +150,8 @@ export default function Dashboard() {
                   <p className="truncate font-medium text-slate-800">{t.description}</p>
                   <p className="text-xs text-slate-400">{t.category} · {formatDate(t.date)}</p>
                 </div>
-                <span className={`font-semibold ${income ? "text-emerald-600" : "text-red-500"}`}>
-                  {income ? "+" : "−"} {formatBRL(t.amount)}
+                <span className={`shrink-0 font-semibold ${income ? "text-emerald-600" : "text-red-500"}`}>
+                  {income ? "+" : "−"} <Money value={t.amount} />
                 </span>
               </div>
             );

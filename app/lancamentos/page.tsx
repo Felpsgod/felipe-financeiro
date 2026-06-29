@@ -6,14 +6,9 @@ import Modal from "@/components/Modal";
 import { useAuth } from "@/lib/auth";
 import { useCollection } from "@/lib/useCollection";
 import { addItem, updateItem, deleteItem } from "@/lib/db";
-import { formatBRL, formatDate, today, currentMonth } from "@/lib/format";
+import { Money } from "@/lib/money";
+import { formatDate, today, currentMonth } from "@/lib/format";
 import { CATEGORIES, type Card, type Transaction, type TransactionType } from "@/lib/types";
-
-const TYPE_LABEL: Record<TransactionType, string> = {
-  expense: "Despesa",
-  income: "Receita",
-  payment: "Pagamento",
-};
 
 function emptyForm() {
   return {
@@ -109,10 +104,10 @@ export default function LancamentosPage() {
         </div>
       </div>
 
-      <div className="mb-5 grid grid-cols-3 gap-3">
-        <Stat label="Entradas" value={formatBRL(totals.income)} tone="text-emerald-600" />
-        <Stat label="Saídas" value={formatBRL(totals.expense)} tone="text-red-600" />
-        <Stat label="Saldo" value={formatBRL(totals.balance)} tone={totals.balance >= 0 ? "text-emerald-600" : "text-red-600"} />
+      <div className="mb-5 grid grid-cols-3 gap-2 sm:gap-3">
+        <Stat label="Entradas" value={<Money value={totals.income} />} tone="text-emerald-600" />
+        <Stat label="Saídas" value={<Money value={totals.expense} />} tone="text-red-600" />
+        <Stat label="Saldo" value={<Money value={totals.balance} />} tone={totals.balance >= 0 ? "text-emerald-600" : "text-red-600"} />
       </div>
 
       {loading ? (
@@ -122,41 +117,31 @@ export default function LancamentosPage() {
           Nenhum lançamento neste mês.
         </p>
       ) : (
-        <div className="card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs uppercase text-slate-400">
-              <tr>
-                <th className="px-4 py-2">Data</th>
-                <th className="px-4 py-2">Descrição</th>
-                <th className="px-4 py-2">Categoria</th>
-                <th className="px-4 py-2 text-right">Valor</th>
-                <th className="px-4 py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((t) => (
-                <tr key={t.id} className="border-t border-slate-100">
-                  <td className="px-4 py-2 text-slate-500">{formatDate(t.date)}</td>
-                  <td className="px-4 py-2">
-                    <div className="font-medium">{t.description}</div>
-                    <div className="text-xs text-slate-400">
-                      {TYPE_LABEL[t.type]}
-                      {t.cardId && ` · ${cardName(t.cardId) ?? "cartão"}`}
-                      {!t.paid && " · em aberto"}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 text-slate-500">{t.category}</td>
-                  <td className={`px-4 py-2 text-right font-semibold ${t.type === "income" ? "text-emerald-600" : "text-red-600"}`}>
-                    {t.type === "income" ? "+" : "−"} {formatBRL(t.amount)}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <button onClick={() => openEdit(t)} className="mr-2 text-slate-400 hover:text-emerald-600">Editar</button>
+        <div className="space-y-2">
+          {filtered.map((t) => {
+            const income = t.type === "income";
+            return (
+              <div key={t.id} className="card flex items-center gap-3 p-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-slate-800">{t.description}</p>
+                  <p className="truncate text-xs text-slate-400">
+                    {formatDate(t.date)} · {t.category}
+                    {t.cardId && ` · ${cardName(t.cardId) ?? "cartão"}`}
+                    {!t.paid && " · em aberto"}
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <span className={`font-semibold ${income ? "text-emerald-600" : "text-red-600"}`}>
+                    {income ? "+" : "−"} <Money value={t.amount} />
+                  </span>
+                  <div className="flex gap-2 text-xs">
+                    <button onClick={() => openEdit(t)} className="text-slate-400 hover:text-blue-600">Editar</button>
                     <button onClick={() => remove(t.id)} className="text-slate-400 hover:text-red-600">Excluir</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -213,11 +198,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone: string }) {
+function Stat({ label, value, tone }: { label: string; value: React.ReactNode; tone: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 text-center">
+    <div className="card p-3 text-center">
       <div className="text-xs text-slate-400">{label}</div>
-      <div className={`text-lg font-bold ${tone}`}>{value}</div>
+      <div className={`truncate text-sm font-bold sm:text-lg ${tone}`}>{value}</div>
     </div>
   );
 }

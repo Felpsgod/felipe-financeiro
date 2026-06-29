@@ -6,7 +6,8 @@ import Modal from "@/components/Modal";
 import { useAuth } from "@/lib/auth";
 import { useCollection } from "@/lib/useCollection";
 import { addItem, updateItem, deleteItem } from "@/lib/db";
-import { formatBRL, formatDate, today } from "@/lib/format";
+import { Money } from "@/lib/money";
+import { formatDate, today } from "@/lib/format";
 import type { Financing } from "@/lib/types";
 
 const EMPTY = {
@@ -93,7 +94,7 @@ export default function FinanciamentosPage() {
                   <div>
                     <h3 className="font-semibold">{f.description}</h3>
                     <p className="text-xs text-slate-400">
-                      {formatBRL(f.installmentValue)}/mês · vence dia {f.dueDay} · início {formatDate(f.startDate)}
+                      <Money value={f.installmentValue} />/mês · vence dia {f.dueDay} · início {formatDate(f.startDate)}
                     </p>
                   </div>
                   <div className="flex gap-2 text-sm">
@@ -107,7 +108,7 @@ export default function FinanciamentosPage() {
                     {f.paidInstallments} de {f.installments} parcelas pagas
                   </span>
                   <span className="font-medium text-slate-700">
-                    Falta {formatBRL(remaining)}
+                    Falta <Money value={remaining} />
                   </span>
                 </div>
                 <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100">
