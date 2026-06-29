@@ -4,6 +4,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  setDoc,
   onSnapshot,
   query,
   orderBy,
@@ -66,4 +67,26 @@ export async function updateItem(
 
 export async function deleteItem(uid: string, name: string, id: string) {
   await deleteDoc(doc(db, "users", uid, name, id));
+}
+
+/** Lê/escuta um documento único (ex: settings/ai) em tempo real. */
+export function watchDoc<T>(
+  uid: string,
+  name: string,
+  id: string,
+  cb: (data: (T & { id: string }) | null) => void,
+) {
+  return onSnapshot(doc(db, "users", uid, name, id), (snap) => {
+    cb(snap.exists() ? ({ id: snap.id, ...(snap.data() as T) }) : null);
+  });
+}
+
+/** Cria/atualiza um documento único (merge). */
+export async function setDocData(
+  uid: string,
+  name: string,
+  id: string,
+  data: Record<string, unknown>,
+) {
+  await setDoc(doc(db, "users", uid, name, id), data, { merge: true });
 }

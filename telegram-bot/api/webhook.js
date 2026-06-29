@@ -6,8 +6,6 @@ export default async function handler(req, res) {
     return res.status(200).send("Telegram webhook ativo.");
   }
 
-  // Proteção opcional: o Telegram envia este header se você configurar um
-  // secret_token no setWebhook.
   const secret = process.env.TELEGRAM_SECRET_TOKEN;
   if (secret && req.headers["x-telegram-bot-api-secret-token"] !== secret) {
     return res.status(401).send("não autorizado");
@@ -17,30 +15,33 @@ export default async function handler(req, res) {
     const message = req.body?.message || req.body?.edited_message;
     const text = message?.text;
     const chatId = message?.chat?.id;
-
-    if (!text || !chatId) return res.status(200).send("ok"); // ignora não-texto
+    if (!text || !chatId) return res.status(200).send("ok");
 
     const allowed = process.env.ALLOWED_CHAT_ID;
-
-    // 1ª vez: ajuda você a descobrir seu chat ID.
     if (!allowed) {
       await sendTelegram(chatId, `Seu chat ID é: ${chatId}\n\nAdicione esse número na variável ALLOWED_CHAT_ID do robô (na Vercel) e me mande de novo.`);
       return res.status(200).send("ok");
     }
-    // Só aceita você.
-    if (String(chatId) !== String(allowed)) {
-      return res.status(200).send("ignorado");
-    }
+    if (String(chatId) !== String(allowed)) return res.status(200).send("ignorado");
 
     const uid = process.env.APP_USER_UID;
     if (!uid) throw new Error("APP_USER_UID não configurado");
 
     const firestore = db();
-    const cardsSnap = await firestore.collection("users").doc(uid).collection("cards").get();
+    const userRef = firestore.collection("users").doc(uid);
+
+    // Provedor de IA escolhido no app (users/{uid}/settings/ai). Fallback: env.
+    let provider;
+    try {
+      const cfg = await userRef.collection("settings").doc("ai").get();
+      if (cfg.exists) provider = cfg.data().provider;
+    } catch { /* sem config: usa o padrão */ }
+
+    const cardsSnap = await userRef.collection("cards").get();
     const cards = cardsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
     const cardNames = cards.map((c) => c.name);
 
-    const parsed = await parseMessage(text, cardNames);
+    const parsed = await parseMessage(text, cardNames, provider);
 
     let cardId;
     if (parsed.cardName) {
@@ -60,7 +61,7 @@ export default async function handler(req, res) {
       ...(cardId ? { cardId } : {}),
     };
 
-    await firestore.collection("users").doc(uid).collection("transactions").add(transaction);
+    await userRef.collection("transactions").add(transaction);
 
     const cardLabel = cardId ? ` (${parsed.cardName})` : "";
     const valor = transaction.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -71,7 +72,8 @@ export default async function handler(req, res) {
     console.error("Erro no webhook:", err);
     try {
       const chatId = (req.body?.message || req.body?.edited_message)?.chat?.id;
-      if (chatId) await sendTelegram(chatId, "⚠️ Não consegui registrar. Tente reescrever, ex: 'Gastei 100 no Itaú'.");
+      // Mostra o motivo real para facilitar o diagnóstico.
+      if (chatId) await sendTelegram(chatId, `⚠️ Erro ao registrar: ${err?.message || err}`);
     } catch {}
     return res.status(200).send("ok");
   }

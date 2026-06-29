@@ -3,140 +3,195 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
+import { useAuth } from "@/lib/auth";
 import { useCollection } from "@/lib/useCollection";
-import { formatBRL, currentMonth } from "@/lib/format";
+import { formatBRL, formatDate, currentMonth } from "@/lib/format";
 import type { Card, Financing, Transaction } from "@/lib/types";
 
+const CAT_STYLE: Record<string, { c: string; e: string }> = {
+  "Alimentação": { c: "#f59e0b", e: "🍽️" },
+  "Transporte": { c: "#3b82f6", e: "🚗" },
+  "Moradia": { c: "#8b5cf6", e: "🏠" },
+  "Saúde": { c: "#ef4444", e: "❤️" },
+  "Educação": { c: "#0ea5e9", e: "📚" },
+  "Lazer": { c: "#ec4899", e: "🎮" },
+  "Compras": { c: "#14b8a6", e: "🛍️" },
+  "Assinaturas": { c: "#6366f1", e: "🔁" },
+  "Financiamento": { c: "#64748b", e: "🏦" },
+  "Fatura de cartão": { c: "#0891b2", e: "💳" },
+  "Salário": { c: "#22c55e", e: "💼" },
+  "Outros": { c: "#94a3b8", e: "💸" },
+};
+const cat = (c: string) => CAT_STYLE[c] ?? { c: "#94a3b8", e: "💸" };
+
 export default function Dashboard() {
-  const { items: cards } = useCollection<Card>("cards");
+  const { user } = useAuth();
   const { items: financings } = useCollection<Financing>("financings");
-  const { items: txns } = useCollection<Transaction>("transactions");
+  const { items: txns } = useCollection<Transaction>("transactions", true);
+  useCollection<Card>("cards"); // mantém o cache aquecido
 
   const month = currentMonth();
+  const firstName = (user?.displayName || "").split(" ")[0] || "por aqui";
 
   const s = useMemo(() => {
     const ofMonth = txns.filter((t) => t.date?.startsWith(month));
     let income = 0, expense = 0;
-    const byCard: Record<string, number> = {};
+    const byCat: Record<string, number> = {};
     for (const t of ofMonth) {
       if (t.type === "income") income += t.amount;
-      else expense += t.amount;
-      if (t.type === "expense" && t.cardId) byCard[t.cardId] = (byCard[t.cardId] ?? 0) + t.amount;
+      else {
+        expense += t.amount;
+        byCat[t.category] = (byCat[t.category] ?? 0) + t.amount;
+      }
     }
+    const cats = Object.entries(byCat)
+      .map(([label, value]) => ({ label, value, color: cat(label).c }))
+      .sort((a, b) => b.value - a.value);
     const installmentsDue = financings
       .filter((f) => f.paidInstallments < f.installments)
       .reduce((sum, f) => sum + f.installmentValue, 0);
-    return { income, expense, byCard, installmentsDue, balance: income - expense };
+    return { income, expense, balance: income - expense, cats, installmentsDue };
   }, [txns, financings, month]);
+
+  const recent = txns.slice(0, 6);
 
   return (
     <AppShell>
-      <div className="mb-5">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-800">Olá! 👋</h1>
-        <p className="text-sm capitalize text-slate-400">{monthLabel(month)}</p>
+      {/* Saudação */}
+      <div className="mb-4 flex items-center gap-3">
+        <span className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-lg font-bold text-white">
+          {firstName.charAt(0).toUpperCase()}
+        </span>
+        <div>
+          <p className="text-lg font-bold text-slate-800">Olá, {firstName}!</p>
+          <p className="text-xs capitalize text-slate-400">{monthLabel(month)}</p>
+        </div>
       </div>
 
-      {/* Hero: saldo do mês */}
-      <div className="mb-4 overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 p-5 text-white shadow-lg shadow-emerald-600/20">
-        <p className="text-sm text-emerald-50/90">Saldo do mês</p>
+      {/* Cartão de saldo */}
+      <div className="relative mb-5 overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 p-5 text-white shadow-lg shadow-blue-700/25">
+        <div className="absolute -right-8 -top-10 h-40 w-40 rounded-full bg-white/10" />
+        <div className="absolute right-6 top-5 h-8 w-10 rounded-md bg-white/25" />
+        <p className="text-sm text-blue-100">Saldo do mês</p>
         <p className="mt-1 text-4xl font-bold tracking-tight">{formatBRL(s.balance)}</p>
-        <div className="mt-4 flex gap-6 text-sm">
+        <div className="mt-5 flex gap-6 text-sm">
           <div>
-            <p className="text-emerald-50/80">Entradas</p>
+            <p className="text-blue-200">↑ Entradas</p>
             <p className="font-semibold">{formatBRL(s.income)}</p>
           </div>
           <div>
-            <p className="text-emerald-50/80">Saídas</p>
+            <p className="text-blue-200">↓ Saídas</p>
             <p className="font-semibold">{formatBRL(s.expense)}</p>
           </div>
         </div>
       </div>
 
-      {/* Cards de atalho */}
-      <div className="mb-6 grid grid-cols-2 gap-3">
-        <MiniStat label="Parcelas a pagar" value={formatBRL(s.installmentsDue)} tone="amber" />
-        <MiniStat label="Cartões ativos" value={String(cards.length)} tone="slate" />
+      {/* Ações rápidas */}
+      <div className="mb-6 grid grid-cols-4 gap-2">
+        <Action href="/lancamentos" label="Lançar" bg="bg-blue-50" fg="text-blue-600" icon={<PlusIcon />} />
+        <Action href="/cartoes" label="Cartões" bg="bg-violet-50" fg="text-violet-600" icon={<CardIcon />} />
+        <Action href="/financiamentos" label="Financ." bg="bg-amber-50" fg="text-amber-600" icon={<BankIcon />} />
+        <Action href="/importar" label="Importar" bg="bg-emerald-50" fg="text-emerald-600" icon={<UpIcon />} />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <section>
-          <SectionHead title="Gasto por cartão" href="/cartoes" />
-          {cards.length === 0 ? (
-            <Empty>Cadastre um cartão para acompanhar a fatura.</Empty>
-          ) : (
-            <div className="space-y-2.5">
-              {cards.map((c) => {
-                const spent = s.byCard[c.id] ?? 0;
-                const pct = c.limit > 0 ? Math.min(100, (spent / c.limit) * 100) : 0;
-                return (
-                  <div key={c.id} className="card p-3.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2 font-medium text-slate-700">
-                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: c.color }} />
-                        {c.name}
-                      </span>
-                      <span className="text-slate-500">{formatBRL(spent)} <span className="text-slate-300">/ {formatBRL(c.limit)}</span></span>
-                    </div>
-                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: c.color }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <section>
-          <SectionHead title="Financiamentos em aberto" href="/financiamentos" />
-          {financings.filter((f) => f.paidInstallments < f.installments).length === 0 ? (
-            <Empty>Nenhuma parcela em aberto.</Empty>
-          ) : (
-            <div className="space-y-2.5">
-              {financings.filter((f) => f.paidInstallments < f.installments).map((f) => (
-                <div key={f.id} className="card p-3.5 text-sm">
-                  <div className="flex justify-between font-medium text-slate-700">
-                    <span>{f.description}</span>
-                    <span>{formatBRL(f.installmentValue)}/mês</span>
-                  </div>
-                  <div className="mt-0.5 text-xs text-slate-400">
-                    {f.paidInstallments}/{f.installments} parcelas · vence dia {f.dueDay}
-                  </div>
+      {/* Gastos por categoria */}
+      <h2 className="mb-2 font-semibold text-slate-800">Gastos por categoria</h2>
+      <div className="card mb-6 flex items-center gap-5 p-4">
+        {s.cats.length === 0 ? (
+          <p className="py-4 text-sm text-slate-400">Sem gastos neste mês ainda.</p>
+        ) : (
+          <>
+            <Donut data={s.cats} />
+            <div className="flex-1 space-y-1.5">
+              {s.cats.slice(0, 5).map((d) => (
+                <div key={d.label} className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-slate-600">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: d.color }} />
+                    {d.label}
+                  </span>
+                  <span className="font-medium text-slate-700">{formatBRL(d.value)}</span>
                 </div>
               ))}
             </div>
-          )}
-        </section>
+          </>
+        )}
       </div>
+
+      {/* Últimos lançamentos */}
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="font-semibold text-slate-800">Últimos lançamentos</h2>
+        <Link href="/lancamentos" className="text-xs font-medium text-blue-600 hover:underline">ver todos</Link>
+      </div>
+      {recent.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">
+          Nenhum lançamento ainda. Use o botão “+” ou registre pelo Telegram.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {recent.map((t) => {
+            const st = cat(t.category);
+            const income = t.type === "income";
+            return (
+              <div key={t.id} className="card flex items-center gap-3 p-3">
+                <span className="grid h-10 w-10 place-items-center rounded-full text-lg" style={{ backgroundColor: st.c + "22" }}>
+                  {st.e}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-slate-800">{t.description}</p>
+                  <p className="text-xs text-slate-400">{t.category} · {formatDate(t.date)}</p>
+                </div>
+                <span className={`font-semibold ${income ? "text-emerald-600" : "text-red-500"}`}>
+                  {income ? "+" : "−"} {formatBRL(t.amount)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </AppShell>
   );
 }
 
-function MiniStat({ label, value, tone }: { label: string; value: string; tone: "amber" | "slate" }) {
-  const tones = {
-    amber: "from-amber-50 to-orange-50 text-amber-700",
-    slate: "from-slate-50 to-slate-100 text-slate-700",
-  };
+function Donut({ data }: { data: { label: string; value: number; color: string }[] }) {
+  const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  const r = 42, c = 2 * Math.PI * r;
+  let offset = 0;
   return (
-    <div className={`rounded-2xl border border-slate-100 bg-gradient-to-br ${tones[tone]} p-4`}>
-      <p className="text-xs font-medium opacity-70">{label}</p>
-      <p className="mt-1 text-xl font-bold">{value}</p>
+    <div className="relative h-28 w-28 shrink-0">
+      <svg viewBox="0 0 100 100" className="h-28 w-28 -rotate-90">
+        <circle cx="50" cy="50" r={r} fill="none" stroke="#eef2f7" strokeWidth="12" />
+        {data.map((d) => {
+          const len = (d.value / total) * c;
+          const seg = (
+            <circle key={d.label} cx="50" cy="50" r={r} fill="none" stroke={d.color}
+              strokeWidth="12" strokeDasharray={`${len} ${c - len}`} strokeDashoffset={-offset} strokeLinecap="butt" />
+          );
+          offset += len;
+          return seg;
+        })}
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-lg font-bold text-slate-700">{data.length}</span>
+        <span className="text-[10px] text-slate-400">categorias</span>
+      </div>
     </div>
   );
 }
 
-function SectionHead({ title, href }: { title: string; href: string }) {
+function Action({ href, label, bg, fg, icon }: { href: string; label: string; bg: string; fg: string; icon: ReactNodeT }) {
   return (
-    <div className="mb-2.5 flex items-center justify-between">
-      <h2 className="font-semibold text-slate-800">{title}</h2>
-      <Link href={href} className="text-xs font-medium text-emerald-600 hover:underline">ver tudo</Link>
-    </div>
+    <Link href={href} className="flex flex-col items-center gap-1.5">
+      <span className={`grid h-12 w-12 place-items-center rounded-2xl ${bg} ${fg}`}>{icon}</span>
+      <span className="text-xs font-medium text-slate-600">{label}</span>
+    </Link>
   );
 }
 
-function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">{children}</p>;
-}
+type ReactNodeT = React.ReactNode;
+function PlusIcon() { return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>; }
+function CardIcon() { return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg>; }
+function BankIcon() { return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-6 9 6" /><path d="M4 10v9M20 10v9M9 10v9M15 10v9M2 21h20" /></svg>; }
+function UpIcon() { return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 21h14" /></svg>; }
 
 function monthLabel(ym: string): string {
   const [y, m] = ym.split("-").map(Number);
