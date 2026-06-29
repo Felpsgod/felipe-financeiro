@@ -1,7 +1,7 @@
 {
-  "name": "whatsapp-bot",
+  "name": "telegram-bot",
   "version": "1.0.0",
-  "description": "Webhook do WhatsApp que registra despesas no Firestore usando a Claude API",
+  "description": "Webhook do Telegram que registra despesas no Firestore usando a Claude API",
   "type": "module",
   "private": true,
   "dependencies": {
