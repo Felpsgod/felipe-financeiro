@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
+import BankLogo from "@/components/BankLogo";
+import { detectBank } from "@/lib/banks";
 import { useAuth } from "@/lib/auth";
 import { useCollection } from "@/lib/useCollection";
 import { addItem, updateItem, deleteItem } from "@/lib/db";
@@ -100,7 +102,7 @@ export default function CartoesPage() {
                       <p className="text-xs uppercase tracking-wider text-white/70">{c.brand}</p>
                       <p className="mt-0.5 text-lg font-semibold">{c.name}</p>
                     </div>
-                    <div className="h-7 w-9 rounded-md bg-white/25" />
+                    <BankLogo name={c.name} size={40} />
                   </div>
                   <p className="mt-6 text-sm text-white/80">Fatura do mês</p>
                   <p className="text-2xl font-bold"><Money value={spent} /></p>
@@ -128,7 +130,16 @@ export default function CartoesPage() {
       <Modal open={open} title={editingId ? "Editar cartão" : "Novo cartão"} onClose={() => setOpen(false)}>
         <form onSubmit={save} className="space-y-3">
           <Field label="Nome (ex: Nubank)">
-            <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" />
+            <input
+              required
+              value={form.name}
+              onChange={(e) => {
+                const name = e.target.value;
+                const bank = detectBank(name);
+                setForm((f) => ({ ...f, name, ...(bank ? { color: bank.color } : {}) }));
+              }}
+              className="input"
+            />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Bandeira">
