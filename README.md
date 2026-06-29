@@ -109,5 +109,8 @@ processado no navegador, nada sai da sua máquina.
 ## Segurança
 
 - Chaves do Firebase Web são públicas; a proteção real vem de `firestore.rules`.
-- Segredos do servidor (token do WhatsApp, `ANTHROPIC_API_KEY`, conta de serviço) ficam
-  **só** nas variáveis de ambiente da Vercel — nunca no front-end nem no Git.
+- Segredos do servidor (chaves de IA, conta de serviço) ficam **só** nas variáveis de
+  ambiente da Vercel — nunca no front-end nem no Git.
+
+<!-- redeploy: repositório público -->
+
