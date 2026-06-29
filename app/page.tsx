@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
+import QuickAdd from "@/components/QuickAdd";
 import { useAuth } from "@/lib/auth";
 import { useCollection } from "@/lib/useCollection";
 import { formatBRL, formatDate, currentMonth } from "@/lib/format";
@@ -85,6 +86,9 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Adicionar por texto (IA) */}
+      <QuickAdd />
 
       {/* Ações rápidas */}
       <div className="mb-6 grid grid-cols-4 gap-2">
