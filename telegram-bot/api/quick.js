@@ -1,16 +1,18 @@
 import { db } from "../lib/firebase.js";
 import { parseMessage } from "../lib/parse.js";
-import { getAuth } from "firebase-admin/auth";
 
-// Endpoint chamado pelo PRÓPRIO app (caixa de texto no Resumo). Diferente do
-// webhook do Telegram: aqui validamos o login do Firebase (ID token) para saber
-// quem é o usuário, de forma segura.
+// Endpoint chamado pelo PRÓPRIO app (caixa de texto no Resumo). Valida o login
+// do Firebase (ID token) para saber quem é o usuário, de forma segura.
 const ALLOW_ORIGIN = process.env.APP_ORIGIN || "*";
 
-export default async function handler(req, res) {
+function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", ALLOW_ORIGIN);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+}
+
+export default async function handler(req, res) {
+  cors(res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "método não permitido" });
 
@@ -20,6 +22,8 @@ export default async function handler(req, res) {
     if (!token) return res.status(401).json({ ok: false, error: "sem token de autenticação" });
 
     const firestore = db();
+    // import dinâmico: evita falha no carregamento do módulo (mantém GET/OPTIONS ok).
+    const { getAuth } = await import("firebase-admin/auth");
     const decoded = await getAuth().verifyIdToken(token);
     const uid = decoded.uid;
 

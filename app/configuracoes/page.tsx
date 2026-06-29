@@ -5,18 +5,19 @@ import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
 import { watchDoc, setDocData } from "@/lib/db";
 
-type Provider = "deepseek" | "openai" | "gemini" | "claude";
+type Provider = "local" | "deepseek" | "openai" | "gemini" | "claude";
 
 const OPTIONS: { value: Provider; label: string; hint: string }[] = [
-  { value: "deepseek", label: "DeepSeek", hint: "Mais barato — ótimo custo-benefício" },
-  { value: "openai", label: "GPT (OpenAI)", hint: "gpt-4o-mini" },
-  { value: "gemini", label: "Gemini (Google)", hint: "gemini-2.0-flash" },
-  { value: "claude", label: "Claude (Anthropic)", hint: "claude-opus-4-8" },
+  { value: "local", label: "Grátis (sem IA)", hint: "Interpretador embutido — sem chave, sem custo. Recomendado." },
+  { value: "deepseek", label: "DeepSeek", hint: "Barato, mas precisa de crédito" },
+  { value: "openai", label: "GPT (OpenAI)", hint: "Precisa de crédito" },
+  { value: "gemini", label: "Gemini (Google)", hint: "Cota gratuita limitada" },
+  { value: "claude", label: "Claude (Anthropic)", hint: "Precisa de crédito" },
 ];
 
 export default function ConfiguracoesPage() {
   const { user } = useAuth();
-  const [provider, setProvider] = useState<Provider>("deepseek");
+  const [provider, setProvider] = useState<Provider>("local");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -76,8 +77,9 @@ export default function ConfiguracoesPage() {
       {saved && <p className="mt-3 text-sm font-medium text-emerald-600">Salvo! ✓</p>}
 
       <p className="mt-5 rounded-xl bg-slate-100 p-3 text-xs text-slate-500">
-        Lembrete: a chave de API do provedor escolhido precisa estar configurada nas variáveis
-        de ambiente do robô (na Vercel). Ex: para DeepSeek, a variável <code>DEEPSEEK_API_KEY</code>.
+        <strong>Grátis (sem IA)</strong> funciona na hora, sem configurar nada. Os provedores de IA
+        (DeepSeek, GPT, Gemini, Claude) entendem frases mais complexas, mas exigem a respectiva
+        chave de API nas variáveis do robô (na Vercel) e, em geral, crédito.
       </p>
     </AppShell>
   );
