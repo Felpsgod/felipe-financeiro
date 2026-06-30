@@ -8,7 +8,8 @@ import { useAuth } from "@/lib/auth";
 import { useCollection } from "@/lib/useCollection";
 import { Money } from "@/lib/money";
 import { formatDate, currentMonth, effectiveMonth, addMonth } from "@/lib/format";
-import type { Card, Financing, Transaction } from "@/lib/types";
+import { recurringForMonth } from "@/lib/recurring";
+import type { Card, Financing, Transaction, Recurring } from "@/lib/types";
 
 const CAT_STYLE: Record<string, { c: string; e: string }> = {
   "Alimentação": { c: "#f59e0b", e: "🍽️" },
@@ -30,16 +31,25 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { items: financings } = useCollection<Financing>("financings");
   const { items: txns } = useCollection<Transaction>("transactions", true);
+  const { items: recurring } = useCollection<Recurring>("recurring");
   useCollection<Card>("cards"); // mantém o cache aquecido
 
   const [month, setMonth] = useState(currentMonth());
   const firstName = (user?.displayName || "").split(" ")[0] || "por aqui";
 
+  // Lançamentos do mês = reais (na competência) + contas fixas geradas.
+  const monthEntries = useMemo(
+    () => [
+      ...txns.filter((t) => effectiveMonth(t) === month),
+      ...recurringForMonth(recurring, month),
+    ].sort((a, b) => (b.date || "").localeCompare(a.date || "")),
+    [txns, recurring, month],
+  );
+
   const s = useMemo(() => {
-    const ofMonth = txns.filter((t) => effectiveMonth(t) === month);
     let income = 0, expense = 0;
     const byCat: Record<string, number> = {};
-    for (const t of ofMonth) {
+    for (const t of monthEntries) {
       if (t.type === "income") income += t.amount;
       else {
         expense += t.amount;
@@ -53,9 +63,9 @@ export default function Dashboard() {
       .filter((f) => f.paidInstallments < f.installments)
       .reduce((sum, f) => sum + f.installmentValue, 0);
     return { income, expense, balance: income - expense, cats, installmentsDue };
-  }, [txns, financings, month]);
+  }, [monthEntries, financings]);
 
-  const recent = txns.slice(0, 6);
+  const recent = monthEntries.slice(0, 6);
 
   return (
     <AppShell>
@@ -104,8 +114,9 @@ export default function Dashboard() {
       <QuickAdd />
 
       {/* Ações rápidas */}
-      <div className="mb-6 grid grid-cols-4 gap-2">
+      <div className="mb-6 grid grid-cols-5 gap-2">
         <Action href="/lancamentos" label="Lançar" bg="bg-blue-50" fg="text-blue-600" icon={<PlusIcon />} />
+        <Action href="/fixas" label="Fixas" bg="bg-indigo-50" fg="text-indigo-600" icon={<RepeatIcon />} />
         <Action href="/cartoes" label="Cartões" bg="bg-violet-50" fg="text-violet-600" icon={<CardIcon />} />
         <Action href="/financiamentos" label="Financ." bg="bg-amber-50" fg="text-amber-600" icon={<BankIcon />} />
         <Action href="/importar" label="Importar" bg="bg-emerald-50" fg="text-emerald-600" icon={<UpIcon />} />
@@ -209,6 +220,7 @@ function PlusIcon() { return <svg width="20" height="20" viewBox="0 0 24 24" fil
 function CardIcon() { return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg>; }
 function BankIcon() { return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-6 9 6" /><path d="M4 10v9M20 10v9M9 10v9M15 10v9M2 21h20" /></svg>; }
 function UpIcon() { return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15V3M7 8l5-5 5 5M5 21h14" /></svg>; }
+function RepeatIcon() { return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m17 2 4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3" /></svg>; }
 
 function monthLabel(ym: string): string {
   const [y, m] = ym.split("-").map(Number);

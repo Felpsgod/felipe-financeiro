@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import { useAuth } from "@/lib/auth";
@@ -8,7 +9,8 @@ import { useCollection } from "@/lib/useCollection";
 import { addItem, updateItem, deleteItem } from "@/lib/db";
 import { Money } from "@/lib/money";
 import { formatDate, today, currentMonth, effectiveMonth } from "@/lib/format";
-import { CATEGORIES, type Card, type Transaction, type TransactionType } from "@/lib/types";
+import { recurringForMonth, type Entry } from "@/lib/recurring";
+import { CATEGORIES, type Card, type Transaction, type TransactionType, type Recurring } from "@/lib/types";
 
 function emptyForm() {
   return {
@@ -26,6 +28,7 @@ export default function LancamentosPage() {
   const { user } = useAuth();
   const { items: txns, loading } = useCollection<Transaction>("transactions", true);
   const { items: cards } = useCollection<Card>("cards");
+  const { items: recurring } = useCollection<Recurring>("recurring");
   const [month, setMonth] = useState(currentMonth());
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -33,9 +36,12 @@ export default function LancamentosPage() {
 
   const cardName = (id?: string) => cards.find((c) => c.id === id)?.name;
 
-  const filtered = useMemo(
-    () => txns.filter((t) => effectiveMonth(t) === month),
-    [txns, month],
+  const filtered = useMemo<Entry[]>(
+    () => [
+      ...txns.filter((t) => effectiveMonth(t) === month),
+      ...recurringForMonth(recurring, month),
+    ].sort((a, b) => (b.date || "").localeCompare(a.date || "")),
+    [txns, recurring, month],
   );
 
   const totals = useMemo(() => {
@@ -120,24 +126,32 @@ export default function LancamentosPage() {
         <div className="space-y-2">
           {filtered.map((t) => {
             const income = t.type === "income";
+            const isRec = t.recurring;
             return (
               <div key={t.id} className="card flex items-center gap-3 p-3">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-slate-800">{t.description}</p>
+                  <p className="truncate font-medium text-slate-800">
+                    {t.description}
+                    {isRec && <span className="ml-1.5 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 align-middle">FIXA</span>}
+                  </p>
                   <p className="truncate text-xs text-slate-400">
                     {formatDate(t.date)} · {t.category}
                     {t.cardId && ` · ${cardName(t.cardId) ?? "cartão"}`}
-                    {!t.paid && " · em aberto"}
+                    {!isRec && !t.paid && " · em aberto"}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <span className={`font-semibold ${income ? "text-emerald-600" : "text-red-600"}`}>
                     {income ? "+" : "−"} <Money value={t.amount} />
                   </span>
-                  <div className="flex gap-2 text-xs">
-                    <button onClick={() => openEdit(t)} className="text-slate-400 hover:text-blue-600">Editar</button>
-                    <button onClick={() => remove(t.id)} className="text-slate-400 hover:text-red-600">Excluir</button>
-                  </div>
+                  {isRec ? (
+                    <Link href="/fixas" className="text-xs text-slate-400 hover:text-blue-600">gerenciar</Link>
+                  ) : (
+                    <div className="flex gap-2 text-xs">
+                      <button onClick={() => openEdit(t)} className="text-slate-400 hover:text-blue-600">Editar</button>
+                      <button onClick={() => remove(t.id)} className="text-slate-400 hover:text-red-600">Excluir</button>
+                    </div>
+                  )}
                 </div>
               </div>
             );

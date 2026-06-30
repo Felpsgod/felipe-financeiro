@@ -41,6 +41,19 @@ export interface Transaction {
   createdAt: number;
 }
 
+/** Conta fixa/recorrente: aparece automaticamente em todo mês a partir de `startMonth`. */
+export interface Recurring {
+  id: string;
+  description: string;
+  amount: number;
+  type: "expense" | "income";
+  category: string;
+  dayOfMonth: number; // dia do mês (1-31)
+  startMonth: string; // YYYY-MM — mês a partir do qual passa a valer
+  active: boolean;
+  createdAt: number;
+}
+
 export const CATEGORIES = [
   "Alimentação",
   "Transporte",
