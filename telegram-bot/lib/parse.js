@@ -104,7 +104,20 @@ function parseLocal(text, cardNames) {
   const dayM = t.match(/\bdia\s+(\d{1,2})\b/);
   const dayOfMonth = dayM ? Number(dayM[1]) : new Date().getDate();
 
-  return { description, amount: parseAmount(text), type, category, cardName, date, intent, dayOfMonth };
+  // Parcelamento: "18x" (valor total) ou "18x de 100" (valor por parcela).
+  let installments = 1;
+  let amount = parseAmount(text);
+  const mPer = t.match(/(\d{1,3})\s*x\s*de\s*([\d.,]+)/);
+  const mN = t.match(/(\d{1,3})\s*x\b/);
+  if (mPer) {
+    installments = Number(mPer[1]);
+    amount = parseAmount(mPer[2]) * installments; // total = parcela × nº
+  } else if (mN) {
+    installments = Number(mN[1]);
+    amount = parseAmount(text.replace(mN[0], " ")); // tira "18x" para não virar valor
+  }
+
+  return { description, amount, type, category, cardName, date, intent, dayOfMonth, installments };
 }
 
 // ---------- Provedores de IA ----------
@@ -118,7 +131,8 @@ function systemPrompt(cardNames) {
     "amount (número positivo), type ('expense'|'income'|'payment'),",
     `category (uma de: ${CATEGORIES.join(", ")}), cardName (string ou null), date (YYYY-MM-DD),`,
     "intent ('transaction' normal, 'recurring' se for conta fixa/mensal, 'financing' se for pagamento de parcela de financiamento),",
-    "dayOfMonth (número do dia do mês, use quando for conta fixa; senão o dia de hoje).",
+    "dayOfMonth (número do dia do mês, use quando for conta fixa; senão o dia de hoje),",
+    "installments (número de parcelas se for compra parcelada no cartão, ex: '18x' → 18; senão 1; e amount deve ser o valor TOTAL da compra).",
     cardNames.length ? `Cartões cadastrados: ${cardNames.join(", ")}.` : "Sem cartões; cardName = null.",
   ].join(" ");
 }

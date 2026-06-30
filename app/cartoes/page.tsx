@@ -12,7 +12,7 @@ import { useCollection } from "@/lib/useCollection";
 import { addItem, updateItem, deleteItem } from "@/lib/db";
 import { Money } from "@/lib/money";
 import { currentMonth } from "@/lib/format";
-import type { Card, CardBrand, CardKind, Transaction } from "@/lib/types";
+import type { Card, CardBrand, CardKind, Transaction, Installment } from "@/lib/types";
 
 const BRANDS: { value: CardBrand; label: string }[] = [
   { value: "visa", label: "Visa" },
@@ -32,6 +32,7 @@ export default function CartoesPage() {
   const { user } = useAuth();
   const { items: cards, loading } = useCollection<Card>("cards");
   const { items: txns } = useCollection<Transaction>("transactions");
+  const { items: installments } = useCollection<Installment>("installments");
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY);
@@ -89,7 +90,7 @@ export default function CartoesPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {cards.map((c) => {
             const isMeal = c.kind === "alimentacao";
-            const used = cardUsed(c, txns, month);
+            const used = cardUsed(c, txns, month, installments);
             const pct = c.limit > 0 ? Math.min(100, (used / c.limit) * 100) : 0;
             const balance = c.limit - used;
             return (

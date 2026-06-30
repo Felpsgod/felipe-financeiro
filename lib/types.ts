@@ -60,6 +60,20 @@ export interface Recurring {
   createdAt: number;
 }
 
+/** Compra parcelada no cartão de crédito (ex: sofá 18x). Gera 1 parcela por mês. */
+export interface Installment {
+  id: string;
+  description: string;
+  totalAmount: number; // valor total da compra
+  count: number; // número de parcelas
+  cardId: string;
+  cardKind?: CardKind;
+  category: string;
+  firstMonth: string; // YYYY-MM da fatura da 1ª parcela
+  day: number; // dia para exibir nas listas
+  createdAt: number;
+}
+
 export const CATEGORIES = [
   "Alimentação",
   "Transporte",

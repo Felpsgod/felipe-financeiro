@@ -10,7 +10,8 @@ import { addItem, updateItem, deleteItem } from "@/lib/db";
 import { Money } from "@/lib/money";
 import { formatDate, today, currentMonth, effectiveMonth } from "@/lib/format";
 import { recurringForMonth, type Entry } from "@/lib/recurring";
-import { CATEGORIES, type Card, type Transaction, type TransactionType, type Recurring } from "@/lib/types";
+import { installmentsForMonth } from "@/lib/installments";
+import { CATEGORIES, type Card, type Transaction, type TransactionType, type Recurring, type Installment } from "@/lib/types";
 
 function emptyForm() {
   return {
@@ -29,6 +30,7 @@ export default function LancamentosPage() {
   const { items: txns, loading } = useCollection<Transaction>("transactions", true);
   const { items: cards } = useCollection<Card>("cards");
   const { items: recurring } = useCollection<Recurring>("recurring");
+  const { items: installments } = useCollection<Installment>("installments");
   const [month, setMonth] = useState(currentMonth());
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -40,8 +42,9 @@ export default function LancamentosPage() {
     () => [
       ...txns.filter((t) => effectiveMonth(t) === month),
       ...recurringForMonth(recurring, month),
+      ...installmentsForMonth(installments, month),
     ].sort((a, b) => (b.date || "").localeCompare(a.date || "")),
-    [txns, recurring, month],
+    [txns, recurring, installments, month],
   );
 
   const totals = useMemo(() => {
@@ -128,17 +131,19 @@ export default function LancamentosPage() {
           {filtered.map((t) => {
             const income = t.type === "income";
             const isRec = t.recurring;
+            const isInst = t.installment;
             return (
               <div key={t.id} className="card flex items-center gap-3 p-3">
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-slate-800">
                     {t.description}
                     {isRec && <span className="ml-1.5 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 align-middle">FIXA</span>}
+                    {isInst && <span className="ml-1.5 rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 align-middle">PARCELA</span>}
                   </p>
                   <p className="truncate text-xs text-slate-400">
                     {formatDate(t.date)} · {t.category}
                     {t.cardId && ` · ${cardName(t.cardId) ?? "cartão"}`}
-                    {!isRec && !t.paid && " · em aberto"}
+                    {!isRec && !isInst && !t.paid && " · em aberto"}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
@@ -147,6 +152,8 @@ export default function LancamentosPage() {
                   </span>
                   {isRec ? (
                     <Link href="/fixas" className="text-xs text-slate-400 hover:text-blue-600">gerenciar</Link>
+                  ) : isInst ? (
+                    <Link href={t.cardId ? `/cartao?id=${t.cardId}` : "/cartoes"} className="text-xs text-slate-400 hover:text-blue-600">ver cartão</Link>
                   ) : (
                     <div className="flex gap-2 text-xs">
                       <button onClick={() => openEdit(t)} className="text-slate-400 hover:text-blue-600">Editar</button>

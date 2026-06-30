@@ -9,8 +9,9 @@ import { useCollection } from "@/lib/useCollection";
 import { Money } from "@/lib/money";
 import { formatDate, currentMonth, effectiveMonth, addMonth } from "@/lib/format";
 import { recurringForMonth } from "@/lib/recurring";
+import { installmentsForMonth } from "@/lib/installments";
 import { cardUsed } from "@/lib/cards";
-import type { Card, Financing, Transaction, Recurring } from "@/lib/types";
+import type { Card, Financing, Transaction, Recurring, Installment } from "@/lib/types";
 
 const CAT_STYLE: Record<string, { c: string; e: string }> = {
   "Alimentação": { c: "#f59e0b", e: "🍽️" },
@@ -33,6 +34,7 @@ export default function Dashboard() {
   const { items: financings } = useCollection<Financing>("financings");
   const { items: txns } = useCollection<Transaction>("transactions", true);
   const { items: recurring } = useCollection<Recurring>("recurring");
+  const { items: installments } = useCollection<Installment>("installments");
   const { items: cards } = useCollection<Card>("cards");
 
   const [month, setMonth] = useState(currentMonth());
@@ -43,8 +45,9 @@ export default function Dashboard() {
     () => [
       ...txns.filter((t) => effectiveMonth(t) === month),
       ...recurringForMonth(recurring, month),
+      ...installmentsForMonth(installments, month),
     ].sort((a, b) => (b.date || "").localeCompare(a.date || "")),
-    [txns, recurring, month],
+    [txns, recurring, installments, month],
   );
 
   const s = useMemo(() => {
@@ -132,7 +135,7 @@ export default function Dashboard() {
           </div>
           <div className="mb-6 space-y-2">
             {cards.map((c) => {
-              const used = cardUsed(c, txns, currentMonth());
+              const used = cardUsed(c, txns, currentMonth(), installments);
               const pct = c.limit > 0 ? Math.min(100, (used / c.limit) * 100) : 0;
               const isMeal = c.kind === "alimentacao";
               return (

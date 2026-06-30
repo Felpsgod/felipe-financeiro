@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import BankLogo from "@/components/BankLogo";
+import { useAuth } from "@/lib/auth";
 import { useCollection } from "@/lib/useCollection";
+import { deleteItem } from "@/lib/db";
 import { cardUsed } from "@/lib/cards";
 import { Money } from "@/lib/money";
-import { effectiveMonth, currentMonth, monthLabel } from "@/lib/format";
-import type { Card, Transaction } from "@/lib/types";
+import { effectiveMonth, currentMonth, monthLabel, addMonth } from "@/lib/format";
+import type { Card, Transaction, Installment } from "@/lib/types";
 
 const CAT_EMOJI: Record<string, string> = {
   "Alimentação": "🍽️", "Transporte": "🚗", "Moradia": "🏠", "Saúde": "❤️",
@@ -17,8 +19,10 @@ const CAT_EMOJI: Record<string, string> = {
 };
 
 export default function CartaoExtrato() {
+  const { user } = useAuth();
   const { items: cards } = useCollection<Card>("cards");
   const { items: txns } = useCollection<Transaction>("transactions");
+  const { items: installments } = useCollection<Installment>("installments");
   const [id, setId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -26,21 +30,36 @@ export default function CartaoExtrato() {
   }, []);
 
   const card = cards.find((c) => c.id === id);
+  const cardInstallments = installments.filter((p) => p.cardId === id);
 
   const months = useMemo(() => {
     if (!id) return [];
     const map: Record<string, { total: number; cats: Record<string, number> }> = {};
+    const add = (m: string, category: string, amount: number) => {
+      map[m] = map[m] || { total: 0, cats: {} };
+      map[m].total += amount;
+      map[m].cats[category] = (map[m].cats[category] ?? 0) + amount;
+    };
     for (const t of txns) {
       if (t.cardId !== id || t.type !== "expense") continue;
-      const m = effectiveMonth(t);
-      map[m] = map[m] || { total: 0, cats: {} };
-      map[m].total += t.amount;
-      map[m].cats[t.category] = (map[m].cats[t.category] ?? 0) + t.amount;
+      add(effectiveMonth(t), t.category, t.amount);
+    }
+    // parcelas das compras parceladas
+    for (const p of cardInstallments) {
+      const parcel = p.totalAmount / p.count;
+      for (let k = 0; k < p.count; k++) add(addMonth(p.firstMonth, k), p.category, parcel);
     }
     return Object.entries(map)
       .map(([month, data]) => ({ month, ...data }))
       .sort((a, b) => b.month.localeCompare(a.month));
-  }, [txns, id]);
+  }, [txns, cardInstallments, id]);
+
+  async function removeInstallment(pid: string) {
+    if (!user) return;
+    if (confirm("Excluir este parcelamento? Todas as parcelas somem.")) {
+      await deleteItem(user.uid, "installments", pid);
+    }
+  }
 
   return (
     <AppShell>
@@ -60,9 +79,26 @@ export default function CartaoExtrato() {
             </div>
             <p className="mt-4 text-sm text-white/80">{card.kind === "alimentacao" ? "Usado este mês" : "Em aberto"}</p>
             <p className="text-2xl font-bold">
-              <Money value={cardUsed(card, txns, currentMonth())} /> <span className="text-sm font-normal text-white/70">/ <Money value={card.limit} /></span>
+              <Money value={cardUsed(card, txns, currentMonth(), installments)} /> <span className="text-sm font-normal text-white/70">/ <Money value={card.limit} /></span>
             </p>
           </div>
+
+          {cardInstallments.length > 0 && (
+            <div className="mb-5">
+              <h2 className="mb-2 font-semibold text-slate-800">Parcelamentos</h2>
+              <div className="space-y-2">
+                {cardInstallments.map((p) => (
+                  <div key={p.id} className="card flex items-center gap-3 p-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-slate-800">{p.description}</p>
+                      <p className="text-xs text-slate-400">{p.count}x de <Money value={p.totalAmount / p.count} /> · total <Money value={p.totalAmount} /></p>
+                    </div>
+                    <button onClick={() => removeInstallment(p.id)} className="shrink-0 text-xs text-slate-400 hover:text-red-600">Excluir</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <h2 className="mb-2 font-semibold text-slate-800">Extrato por mês</h2>
           {months.length === 0 ? (

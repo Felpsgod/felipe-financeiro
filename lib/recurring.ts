@@ -2,7 +2,7 @@ import type { Recurring, Transaction } from "./types";
 
 // Um "lançamento" que aparece nas listas. As contas fixas viram entradas
 // virtuais (recurring: true) — não ficam salvas mês a mês; são geradas na hora.
-export type Entry = Transaction & { recurring?: boolean };
+export type Entry = Transaction & { recurring?: boolean; installment?: boolean };
 
 /** Gera as contas fixas válidas para um mês (YYYY-MM) como lançamentos virtuais. */
 export function recurringForMonth(recs: (Recurring & { id: string })[], month: string): Entry[] {

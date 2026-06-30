@@ -13,6 +13,11 @@ function currentMonthStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
+function addMonthStr(ym, delta) {
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
 
 export async function registerEntry(userRef, parsed, text, cards) {
   const amount = Math.abs(Number(parsed.amount) || 0);
@@ -60,12 +65,35 @@ export async function registerEntry(userRef, parsed, text, cards) {
     // Não achou financiamento: segue como pagamento normal.
   }
 
-  // --- Lançamento normal ---
+  // Cartão (busca por nome).
   let card;
   if (parsed.cardName) {
     card = (cards || []).find((c) => norm(c.name) === norm(parsed.cardName))
       || (cards || []).find((c) => norm(c.name).includes(norm(parsed.cardName)));
   }
+
+  // --- Compra parcelada no cartão de crédito ("sofá 18x no Caixa") ---
+  const count = Number(parsed.installments) || 1;
+  if (count > 1 && card && card.kind !== "alimentacao") {
+    await userRef.collection("installments").add({
+      description: parsed.description,
+      totalAmount: amount,
+      count,
+      cardId: card.id,
+      cardKind: card.kind || "credito",
+      category: parsed.category,
+      firstMonth: addMonthStr(currentMonthStr(), 1), // 1ª parcela na fatura do mês seguinte
+      day: new Date().getDate(),
+      createdAt: Date.now(),
+      source: "chat",
+    });
+    return {
+      ok: true,
+      message: `🛋️ Parcelado: ${parsed.description} ${count}x de ${brl(amount / count)} (total ${brl(amount)}) no ${card.name}`,
+    };
+  }
+
+  // --- Lançamento normal ---
   const cardId = card?.id;
   const transaction = {
     description: parsed.description,
