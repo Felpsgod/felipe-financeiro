@@ -4,14 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import BankLogo from "@/components/BankLogo";
+import Modal from "@/components/Modal";
 import { useAuth } from "@/lib/auth";
 import { useAccount } from "@/lib/account";
 import { useCollection } from "@/lib/useCollection";
-import { deleteItem } from "@/lib/db";
-import { cardUsed } from "@/lib/cards";
+import { deleteItem, updateItem } from "@/lib/db";
+import { cardUsed, cardBalance } from "@/lib/cards";
 import { Money } from "@/lib/money";
 import { effectiveMonth, currentMonth, monthLabel, addMonth } from "@/lib/format";
-import type { Card, Transaction, Installment } from "@/lib/types";
+import { CATEGORIES, type Card, type Transaction, type Installment } from "@/lib/types";
 
 const CAT_EMOJI: Record<string, string> = {
   "Alimentação": "🍽️", "Transporte": "🚗", "Moradia": "🏠", "Saúde": "❤️",
@@ -63,6 +64,20 @@ export default function CartaoExtrato() {
     }
   }
 
+  const [editing, setEditing] = useState<Installment | null>(null);
+  const [form, setForm] = useState({ description: "", totalAmount: 0, count: 1, firstMonth: "", category: "Outros" });
+
+  function openEdit(p: Installment) {
+    setForm({ description: p.description, totalAmount: p.totalAmount, count: p.count, firstMonth: p.firstMonth, category: p.category });
+    setEditing(p);
+  }
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!activeUid || !editing) return;
+    await updateItem(activeUid, "installments", editing.id, { ...form });
+    setEditing(null);
+  }
+
   return (
     <AppShell>
       <Link href="/cartoes" className="mb-3 inline-block text-sm text-blue-600 hover:underline">‹ Cartões</Link>
@@ -79,10 +94,19 @@ export default function CartaoExtrato() {
               </div>
               <BankLogo name={card.name} size={44} />
             </div>
-            <p className="mt-4 text-sm text-white/80">{card.kind === "alimentacao" ? "Usado este mês" : "Em aberto"}</p>
-            <p className="text-2xl font-bold">
-              <Money value={cardUsed(card, txns, currentMonth(), installments)} /> <span className="text-sm font-normal text-white/70">/ <Money value={card.limit} /></span>
-            </p>
+            {card.kind === "alimentacao" ? (
+              <>
+                <p className="mt-4 text-sm text-white/80">Saldo disponível</p>
+                <p className="text-2xl font-bold"><Money value={cardBalance(card, txns)} /></p>
+              </>
+            ) : (
+              <>
+                <p className="mt-4 text-sm text-white/80">Em aberto</p>
+                <p className="text-2xl font-bold">
+                  <Money value={cardUsed(card, txns, currentMonth(), installments)} /> <span className="text-sm font-normal text-white/70">/ <Money value={card.limit} /></span>
+                </p>
+              </>
+            )}
           </div>
 
           {cardInstallments.length > 0 && (
@@ -95,7 +119,10 @@ export default function CartaoExtrato() {
                       <p className="truncate font-medium text-slate-800">{p.description}</p>
                       <p className="text-xs text-slate-400">{p.count}x de <Money value={p.totalAmount / p.count} /> · total <Money value={p.totalAmount} /></p>
                     </div>
-                    <button onClick={() => removeInstallment(p.id)} className="shrink-0 text-xs text-slate-400 hover:text-red-600">Excluir</button>
+                    <div className="flex shrink-0 gap-2 text-xs">
+                      <button onClick={() => openEdit(p)} className="text-slate-400 hover:text-blue-600">Editar</button>
+                      <button onClick={() => removeInstallment(p.id)} className="text-slate-400 hover:text-red-600">Excluir</button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -129,6 +156,38 @@ export default function CartaoExtrato() {
           )}
         </>
       )}
+
+      <Modal open={!!editing} title="Editar parcelamento" onClose={() => setEditing(null)}>
+        <form onSubmit={saveEdit} className="space-y-3">
+          <label className="block">
+            <span className="field-label">Descrição</span>
+            <input required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input" />
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="field-label">Valor total (R$)</span>
+              <input type="number" min={0} step="0.01" value={form.totalAmount} onChange={(e) => setForm({ ...form, totalAmount: Number(e.target.value) })} className="input" />
+            </label>
+            <label className="block">
+              <span className="field-label">Nº de parcelas</span>
+              <input type="number" min={1} value={form.count} onChange={(e) => setForm({ ...form, count: Number(e.target.value) })} className="input" />
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="field-label">1ª parcela (mês)</span>
+              <input type="month" value={form.firstMonth} onChange={(e) => setForm({ ...form, firstMonth: e.target.value })} className="input" />
+            </label>
+            <label className="block">
+              <span className="field-label">Categoria</span>
+              <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="input">
+                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
+          </div>
+          <button type="submit" className="btn-primary w-full">Salvar</button>
+        </form>
+      </Modal>
     </AppShell>
   );
 }

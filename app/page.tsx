@@ -10,7 +10,7 @@ import { Money } from "@/lib/money";
 import { formatDate, currentMonth, effectiveMonth, addMonth } from "@/lib/format";
 import { recurringForMonth } from "@/lib/recurring";
 import { installmentsForMonth } from "@/lib/installments";
-import { cardUsed } from "@/lib/cards";
+import { cardUsed, cardBalance } from "@/lib/cards";
 import type { Card, Financing, Transaction, Recurring, Installment } from "@/lib/types";
 
 const CAT_STYLE: Record<string, { c: string; e: string }> = {
@@ -135,9 +135,10 @@ export default function Dashboard() {
           </div>
           <div className="mb-6 space-y-2">
             {cards.map((c) => {
-              const used = cardUsed(c, txns, currentMonth(), installments);
-              const pct = c.limit > 0 ? Math.min(100, (used / c.limit) * 100) : 0;
               const isMeal = c.kind === "alimentacao";
+              const used = cardUsed(c, txns, currentMonth(), installments);
+              const balance = cardBalance(c, txns);
+              const pct = c.limit > 0 ? Math.min(100, (used / c.limit) * 100) : 0;
               return (
                 <Link key={c.id} href={`/cartao?id=${c.id}`} className="card flex items-center gap-3 p-3">
                   <span className="h-9 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
@@ -148,8 +149,8 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className="shrink-0 text-right text-sm">
-                    <p className="font-semibold text-slate-700"><Money value={used} /></p>
-                    <p className="text-xs text-slate-400">{isMeal ? "saldo " : "limite "}<Money value={c.limit} /></p>
+                    <p className="font-semibold text-slate-700"><Money value={isMeal ? balance : used} /></p>
+                    <p className="text-xs text-slate-400">{isMeal ? "disponível" : <>limite <Money value={c.limit} /></>}</p>
                   </div>
                 </Link>
               );

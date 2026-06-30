@@ -19,6 +19,14 @@ function addMonthStr(ym, delta) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+async function findFinancing(userRef, text) {
+  const snap = await userRef.collection("financings").get();
+  const fins = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return fins.find((f) => f.description && norm(text).includes(norm(f.description)))
+    || fins.find((f) => f.description && norm(f.description).split(/\s+/).some((w) => w.length > 3 && norm(text).includes(w)))
+    || null;
+}
+
 export async function registerEntry(userRef, parsed, text, cards) {
   const amount = Math.abs(Number(parsed.amount) || 0);
 
@@ -39,13 +47,27 @@ export async function registerEntry(userRef, parsed, text, cards) {
     return { ok: true, message: `📌 Conta fixa: ${brl(amount)} — ${parsed.description} (todo dia ${day})` };
   }
 
+  // --- Estorno de parcela de financiamento (desfazer) ---
+  if (parsed.intent === "financing_undo") {
+    const match = await findFinancing(userRef, text);
+    if (match) {
+      const paid = Math.max((match.paidInstallments || 0) - 1, 0);
+      await userRef.collection("financings").doc(match.id).update({ paidInstallments: paid });
+      // Remove o pagamento mais recente desse financiamento (se houver).
+      try {
+        const pays = await userRef.collection("transactions").where("financingId", "==", match.id).get();
+        let last = null;
+        pays.forEach((d) => { const x = { id: d.id, ...d.data() }; if (!last || (x.createdAt || 0) > (last.createdAt || 0)) last = x; });
+        if (last) await userRef.collection("transactions").doc(last.id).delete();
+      } catch { /* ignora */ }
+      return { ok: true, message: `🔙 Parcela estornada: ${match.description} (${paid}/${match.installments})` };
+    }
+    return { ok: true, message: "Não encontrei esse financiamento para estornar." };
+  }
+
   // --- Pagamento de parcela de financiamento ---
   if (parsed.intent === "financing") {
-    const snap = await userRef.collection("financings").get();
-    const fins = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    const match = fins.find((f) => f.description && norm(text).includes(norm(f.description)))
-      || fins.find((f) => f.description && norm(f.description).split(/\s+/).some((w) => w.length > 3 && norm(text).includes(w)));
-
+    const match = await findFinancing(userRef, text);
     if (match) {
       const paid = Math.min((match.paidInstallments || 0) + 1, match.installments || 0);
       await userRef.collection("financings").doc(match.id).update({ paidInstallments: paid });
@@ -82,8 +104,8 @@ export async function registerEntry(userRef, parsed, text, cards) {
       cardId: card.id,
       cardKind: card.kind || "credito",
       category: parsed.category,
-      firstMonth: addMonthStr(currentMonthStr(), 1), // 1ª parcela na fatura do mês seguinte
-      day: new Date().getDate(),
+      firstMonth: addMonthStr((parsed.date || "").slice(0, 7) || currentMonthStr(), 1), // 1ª parcela na fatura do mês seguinte à compra
+      day: new Date((parsed.date || new Date().toISOString().slice(0, 10)) + "T12:00:00").getDate(),
       createdAt: Date.now(),
       source: "chat",
     });

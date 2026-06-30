@@ -6,7 +6,7 @@ import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import BankLogo from "@/components/BankLogo";
 import { detectBank } from "@/lib/banks";
-import { cardUsed } from "@/lib/cards";
+import { cardUsed, cardBalance } from "@/lib/cards";
 import { useAuth } from "@/lib/auth";
 import { useAccount } from "@/lib/account";
 import { useCollection } from "@/lib/useCollection";
@@ -94,7 +94,7 @@ export default function CartoesPage() {
             const isMeal = c.kind === "alimentacao";
             const used = cardUsed(c, txns, month, installments);
             const pct = c.limit > 0 ? Math.min(100, (used / c.limit) * 100) : 0;
-            const balance = c.limit - used;
+            const balance = cardBalance(c, txns);
             return (
               <div key={c.id} className="overflow-hidden rounded-2xl shadow-md">
                 {/* "cartão" colorido (clique abre o extrato) */}

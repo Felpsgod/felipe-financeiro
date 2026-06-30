@@ -31,3 +31,18 @@ export function cardUsed(
   }
   return used;
 }
+
+/**
+ * Saldo disponível do cartão de alimentação/refeição.
+ * Começa no saldo base (limit), soma os recebimentos ("recebi X no Caju") e
+ * subtrai os gastos. Como é acumulado, o que sobra "rola" para o mês seguinte.
+ */
+export function cardBalance(card: Card, txns: Transaction[]): number {
+  let bal = card.limit || 0;
+  for (const t of txns) {
+    if (t.cardId !== card.id) continue;
+    if (t.type === "income") bal += t.amount;
+    else bal -= t.amount;
+  }
+  return bal;
+}

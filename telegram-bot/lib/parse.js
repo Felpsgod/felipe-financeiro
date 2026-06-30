@@ -68,6 +68,34 @@ function buildDescription(text, cardName) {
   return d ? d.charAt(0).toUpperCase() + d.slice(1) : null;
 }
 
+const MESES = {
+  janeiro: 1, fevereiro: 2, marco: 3, abril: 4, maio: 5, junho: 6,
+  julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12,
+};
+
+/** Respeita "ontem", "dd/mm[/aaaa]" ou o nome do mês ("em abril"). Devolve YYYY-MM-DD. */
+function parseDate(t, day) {
+  const now = new Date();
+  let dt = new Date();
+  if (/ontem/.test(t)) dt.setDate(dt.getDate() - 1);
+  const dm = t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
+  if (dm) {
+    let yr = dm[3] ? Number(dm[3]) : now.getFullYear();
+    if (yr < 100) yr += 2000;
+    dt = new Date(yr, Number(dm[2]) - 1, Number(dm[1]));
+  } else {
+    for (const name in MESES) {
+      if (t.includes(name)) {
+        const num = MESES[name];
+        const last = new Date(now.getFullYear(), num, 0).getDate();
+        dt = new Date(now.getFullYear(), num - 1, Math.min(day || now.getDate(), last));
+        break;
+      }
+    }
+  }
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+}
+
 function parseLocal(text, cardNames) {
   const t = norm(text);
 
@@ -87,22 +115,22 @@ function parseLocal(text, cardNames) {
     if (name && t.includes(norm(name))) { cardName = name; break; }
   }
 
-  const now = new Date();
-  if (/ontem/.test(t)) now.setDate(now.getDate() - 1);
-  const date = now.toISOString().slice(0, 10);
-
   const description =
     buildDescription(text, cardName) ||
     (text.trim().charAt(0).toUpperCase() + text.trim().slice(1));
 
-  // Intenção: conta fixa, pagamento de financiamento ou lançamento normal.
-  let intent = "transaction";
-  if (/\b(conta fixa|despesa fixa|gasto fixo|mensal|todo mes|todo dia|recorrente|fixa)\b/.test(t)) intent = "recurring";
-  else if (/\b(financiamento|prestacao|parcela do|parcela da)\b/.test(t)) intent = "financing";
-
-  // Dia do mês (para conta fixa): "todo dia 10".
+  // Dia do mês ("todo dia 10" / "dia 10").
   const dayM = t.match(/\bdia\s+(\d{1,2})\b/);
   const dayOfMonth = dayM ? Number(dayM[1]) : new Date().getDate();
+
+  // Data: respeita "ontem", "dd/mm" ou o nome do mês citado.
+  const date = parseDate(t, dayM ? Number(dayM[1]) : null);
+
+  // Intenção: conta fixa, pagamento/estorno de financiamento ou lançamento normal.
+  const isUndo = /estorn|desfazer|retornar|voltar|cancelar/.test(t);
+  let intent = "transaction";
+  if (/\b(conta fixa|despesa fixa|gasto fixo|mensal|todo mes|todo dia|recorrente|fixa)\b/.test(t)) intent = "recurring";
+  else if (/\b(financiamento|prestacao|parcela do|parcela da)\b/.test(t)) intent = isUndo ? "financing_undo" : "financing";
 
   // Parcelamento: "18x" (valor total) ou "18x de 100" (valor por parcela).
   let installments = 1;
@@ -126,11 +154,11 @@ function systemPrompt(cardNames) {
   const today = new Date().toISOString().slice(0, 10);
   return [
     "Você extrai lançamentos financeiros de mensagens em português do Brasil.",
-    `Hoje é ${today}. Se a mensagem não indicar data, use hoje.`,
+    `Hoje é ${today}. Use a data citada na mensagem (ex: "em abril", "dia 10/04"); se não houver, use hoje.`,
     "Responda APENAS com um objeto JSON com as chaves: description (string),",
     "amount (número positivo), type ('expense'|'income'|'payment'),",
     `category (uma de: ${CATEGORIES.join(", ")}), cardName (string ou null), date (YYYY-MM-DD),`,
-    "intent ('transaction' normal, 'recurring' se for conta fixa/mensal, 'financing' se for pagamento de parcela de financiamento),",
+    "intent ('transaction' normal, 'recurring' se for conta fixa/mensal, 'financing' se for pagamento de parcela de financiamento, 'financing_undo' se for estornar/desfazer parcela de financiamento),",
     "dayOfMonth (número do dia do mês, use quando for conta fixa; senão o dia de hoje),",
     "installments (número de parcelas se for compra parcelada no cartão, ex: '18x' → 18; senão 1; e amount deve ser o valor TOTAL da compra).",
     cardNames.length ? `Cartões cadastrados: ${cardNames.join(", ")}.` : "Sem cartões; cardName = null.",

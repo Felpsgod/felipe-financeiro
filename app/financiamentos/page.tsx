@@ -64,6 +64,13 @@ export default function FinanciamentosPage() {
     });
   }
 
+  async function undoInstallment(f: Financing) {
+    if (!user || f.paidInstallments <= 0) return;
+    await updateItem(activeUid, "financings", f.id, {
+      paidInstallments: f.paidInstallments - 1,
+    });
+  }
+
   async function remove(id: string) {
     if (!user) return;
     if (confirm("Excluir este financiamento?")) {
@@ -117,13 +124,22 @@ export default function FinanciamentosPage() {
                   <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
                 </div>
 
-                <button
-                  onClick={() => payInstallment(f)}
-                  disabled={done}
-                  className="mt-3 rounded-md bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
-                >
-                  {done ? "Quitado ✓" : "Registrar parcela paga"}
-                </button>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={() => payInstallment(f)}
+                    disabled={done}
+                    className="rounded-md bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                  >
+                    {done ? "Quitado ✓" : "Registrar parcela paga"}
+                  </button>
+                  <button
+                    onClick={() => undoInstallment(f)}
+                    disabled={f.paidInstallments <= 0}
+                    className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200 disabled:opacity-40"
+                  >
+                    ↩︎ Desfazer
+                  </button>
+                </div>
               </div>
             );
           })}
