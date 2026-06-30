@@ -1,5 +1,6 @@
 import { db } from "../lib/firebase.js";
 import { parseMessage } from "../lib/parse.js";
+import { registerEntry } from "../lib/register.js";
 
 // Endpoint chamado pelo PRÓPRIO app (caixa de texto no Resumo).
 // Valida o login do Firebase via API REST (evita o firebase-admin/auth, que
@@ -58,26 +59,8 @@ export default async function handler(req, res) {
     const cards = cardsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
     const parsed = await parseMessage(text, cards.map((c) => c.name), provider);
 
-    let cardId;
-    if (parsed.cardName) {
-      const m = cards.find((c) => c.name.toLowerCase() === String(parsed.cardName).toLowerCase());
-      if (m) cardId = m.id;
-    }
-
-    const transaction = {
-      description: parsed.description,
-      amount: Math.abs(Number(parsed.amount) || 0),
-      date: parsed.date,
-      category: parsed.category,
-      type: parsed.type,
-      paid: cardId ? false : true,
-      createdAt: Date.now(),
-      source: "app",
-      ...(cardId ? { cardId } : {}),
-    };
-    await userRef.collection("transactions").add(transaction);
-
-    return res.status(200).json({ ok: true, transaction });
+    const result = await registerEntry(userRef, parsed, text, cards);
+    return res.status(200).json(result);
   } catch (err) {
     console.error("quick error:", err);
     return res.status(200).json({ ok: false, error: err?.message || String(err) });

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { formatBRL } from "@/lib/format";
 
 // URL do projeto do robô na Vercel (onde está a rota /api/quick).
 // Se o domínio do robô mudar, ajuste aqui (ou defina NEXT_PUBLIC_BOT_URL).
@@ -28,8 +27,7 @@ export default function QuickAdd() {
       });
       const data = await res.json();
       if (data.ok) {
-        const t = data.transaction;
-        setMsg({ ok: true, text: `✅ ${t.description} — ${formatBRL(t.amount)} (${t.category})` });
+        setMsg({ ok: true, text: data.message || "Registrado!" });
         setText("");
       } else {
         setMsg({ ok: false, text: data.error || "Não consegui registrar." });

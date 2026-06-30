@@ -1,5 +1,6 @@
 import { db } from "../lib/firebase.js";
 import { parseMessage } from "../lib/parse.js";
+import { registerEntry } from "../lib/register.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -42,30 +43,8 @@ export default async function handler(req, res) {
     const cardNames = cards.map((c) => c.name);
 
     const parsed = await parseMessage(text, cardNames, provider);
-
-    let cardId;
-    if (parsed.cardName) {
-      const match = cards.find((c) => c.name.toLowerCase() === String(parsed.cardName).toLowerCase());
-      if (match) cardId = match.id;
-    }
-
-    const transaction = {
-      description: parsed.description,
-      amount: Math.abs(Number(parsed.amount) || 0),
-      date: parsed.date,
-      category: parsed.category,
-      type: parsed.type,
-      paid: cardId ? false : true,
-      createdAt: Date.now(),
-      source: "telegram",
-      ...(cardId ? { cardId } : {}),
-    };
-
-    await userRef.collection("transactions").add(transaction);
-
-    const cardLabel = cardId ? ` (${parsed.cardName})` : "";
-    const valor = transaction.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-    await sendTelegram(chatId, `✅ Registrado: ${valor} — ${parsed.description}${cardLabel} [${parsed.category}]`);
+    const { message: reply } = await registerEntry(userRef, parsed, text, cards);
+    await sendTelegram(chatId, reply);
 
     return res.status(200).send("ok");
   } catch (err) {

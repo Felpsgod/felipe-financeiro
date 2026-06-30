@@ -95,7 +95,16 @@ function parseLocal(text, cardNames) {
     buildDescription(text, cardName) ||
     (text.trim().charAt(0).toUpperCase() + text.trim().slice(1));
 
-  return { description, amount: parseAmount(text), type, category, cardName, date };
+  // Intenção: conta fixa, pagamento de financiamento ou lançamento normal.
+  let intent = "transaction";
+  if (/\b(conta fixa|despesa fixa|gasto fixo|mensal|todo mes|todo dia|recorrente|fixa)\b/.test(t)) intent = "recurring";
+  else if (/\b(financiamento|prestacao|parcela do|parcela da)\b/.test(t)) intent = "financing";
+
+  // Dia do mês (para conta fixa): "todo dia 10".
+  const dayM = t.match(/\bdia\s+(\d{1,2})\b/);
+  const dayOfMonth = dayM ? Number(dayM[1]) : new Date().getDate();
+
+  return { description, amount: parseAmount(text), type, category, cardName, date, intent, dayOfMonth };
 }
 
 // ---------- Provedores de IA ----------
@@ -107,7 +116,9 @@ function systemPrompt(cardNames) {
     `Hoje é ${today}. Se a mensagem não indicar data, use hoje.`,
     "Responda APENAS com um objeto JSON com as chaves: description (string),",
     "amount (número positivo), type ('expense'|'income'|'payment'),",
-    `category (uma de: ${CATEGORIES.join(", ")}), cardName (string ou null), date (YYYY-MM-DD).`,
+    `category (uma de: ${CATEGORIES.join(", ")}), cardName (string ou null), date (YYYY-MM-DD),`,
+    "intent ('transaction' normal, 'recurring' se for conta fixa/mensal, 'financing' se for pagamento de parcela de financiamento),",
+    "dayOfMonth (número do dia do mês, use quando for conta fixa; senão o dia de hoje).",
     cardNames.length ? `Cartões cadastrados: ${cardNames.join(", ")}.` : "Sem cartões; cardName = null.",
   ].join(" ");
 }
