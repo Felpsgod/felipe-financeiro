@@ -5,6 +5,7 @@ import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import { useAuth } from "@/lib/auth";
+import { useAccount } from "@/lib/account";
 import { useCollection } from "@/lib/useCollection";
 import { addItem, updateItem, deleteItem } from "@/lib/db";
 import { Money } from "@/lib/money";
@@ -27,6 +28,7 @@ function emptyForm() {
 
 export default function LancamentosPage() {
   const { user } = useAuth();
+  const { activeUid } = useAccount();
   const { items: txns, loading } = useCollection<Transaction>("transactions", true);
   const { items: cards } = useCollection<Card>("cards");
   const { items: recurring } = useCollection<Recurring>("recurring");
@@ -89,14 +91,14 @@ export default function LancamentosPage() {
       paid: form.paid,
       ...(form.cardId ? { cardId: form.cardId, cardKind: card?.kind ?? "credito" } : {}),
     };
-    if (editingId) await updateItem(user.uid, "transactions", editingId, data);
-    else await addItem(user.uid, "transactions", data);
+    if (editingId) await updateItem(activeUid, "transactions", editingId, data);
+    else await addItem(activeUid, "transactions", data);
     setOpen(false);
   }
 
   async function remove(id: string) {
     if (!user) return;
-    if (confirm("Excluir este lançamento?")) await deleteItem(user.uid, "transactions", id);
+    if (confirm("Excluir este lançamento?")) await deleteItem(activeUid, "transactions", id);
   }
 
   return (

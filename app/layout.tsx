@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
+import { AccountProvider } from "@/lib/account";
 import { MoneyProvider } from "@/lib/money";
 
 export const metadata: Metadata = {
@@ -29,7 +30,9 @@ export default function RootLayout({
     <html lang="pt-BR" className="h-full antialiased">
       <body className="min-h-full bg-slate-50 text-slate-900">
         <AuthProvider>
-          <MoneyProvider>{children}</MoneyProvider>
+          <AccountProvider>
+            <MoneyProvider>{children}</MoneyProvider>
+          </AccountProvider>
         </AuthProvider>
       </body>
     </html>

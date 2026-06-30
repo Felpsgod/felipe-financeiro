@@ -8,6 +8,7 @@ import BankLogo from "@/components/BankLogo";
 import { detectBank } from "@/lib/banks";
 import { cardUsed } from "@/lib/cards";
 import { useAuth } from "@/lib/auth";
+import { useAccount } from "@/lib/account";
 import { useCollection } from "@/lib/useCollection";
 import { addItem, updateItem, deleteItem } from "@/lib/db";
 import { Money } from "@/lib/money";
@@ -30,6 +31,7 @@ const EMPTY = {
 
 export default function CartoesPage() {
   const { user } = useAuth();
+  const { activeUid } = useAccount();
   const { items: cards, loading } = useCollection<Card>("cards");
   const { items: txns } = useCollection<Transaction>("transactions");
   const { items: installments } = useCollection<Installment>("installments");
@@ -54,8 +56,8 @@ export default function CartoesPage() {
     if (!user) return;
     setSaving(true);
     try {
-      if (editingId) await updateItem(user.uid, "cards", editingId, { ...form });
-      else await addItem(user.uid, "cards", form);
+      if (editingId) await updateItem(activeUid, "cards", editingId, { ...form });
+      else await addItem(activeUid, "cards", form);
       setOpen(false);
     } catch (err) {
       console.error(err);
@@ -69,7 +71,7 @@ export default function CartoesPage() {
     if (!user) return;
     if (!confirm("Excluir este cartão? Os lançamentos ligados a ele não serão apagados.")) return;
     try {
-      await deleteItem(user.uid, "cards", id);
+      await deleteItem(activeUid, "cards", id);
     } catch {
       alert("Não foi possível excluir.");
     }

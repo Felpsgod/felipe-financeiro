@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
+import { useAccount } from "@/lib/account";
 import { useMoney } from "@/lib/money";
+import { ADMIN_EMAIL } from "@/lib/config";
 
 type NavItem = { href: string; label: string; icon: ReactNode };
 
@@ -24,6 +26,7 @@ const RIGHT = [NAV[2], NAV[3]];
 export default function AppShell({ children }: { children: ReactNode }) {
   const { user, loading, signOut } = useAuth();
   const { hidden, toggle } = useMoney();
+  const { activeUid, setActiveUid, accounts } = useAccount();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -68,9 +71,22 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="ml-auto flex items-center gap-1 md:ml-0">
+            {accounts.length > 1 && (
+              <select
+                value={activeUid}
+                onChange={(e) => setActiveUid(e.target.value)}
+                className="max-w-28 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600"
+                aria-label="Trocar de conta"
+              >
+                {accounts.map((a) => <option key={a.uid} value={a.uid}>{a.label}</option>)}
+              </select>
+            )}
             <button onClick={toggle} className="btn-ghost" aria-label={hidden ? "Mostrar valores" : "Ocultar valores"}>
               {hidden ? <IconEyeOff /> : <IconEye />}
             </button>
+            {user?.email === ADMIN_EMAIL && (
+              <Link href="/admin" className="btn-ghost" aria-label="Usuários (admin)"><IconShield /></Link>
+            )}
             <Link href="/configuracoes" className="btn-ghost" aria-label="Configurações"><IconCog /></Link>
             <button onClick={() => signOut()} className="btn-ghost">Sair</button>
           </div>
@@ -140,6 +156,9 @@ function IconEyeOff() {
 }
 function IconRepeat() {
   return (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" /><path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" /></svg>);
+}
+function IconShield() {
+  return (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" /></svg>);
 }
 function IconCog() {
   return (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" /></svg>);

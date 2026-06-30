@@ -5,6 +5,7 @@ import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import BankLogo from "@/components/BankLogo";
 import { useAuth } from "@/lib/auth";
+import { useAccount } from "@/lib/account";
 import { useCollection } from "@/lib/useCollection";
 import { deleteItem } from "@/lib/db";
 import { cardUsed } from "@/lib/cards";
@@ -20,6 +21,7 @@ const CAT_EMOJI: Record<string, string> = {
 
 export default function CartaoExtrato() {
   const { user } = useAuth();
+  const { activeUid } = useAccount();
   const { items: cards } = useCollection<Card>("cards");
   const { items: txns } = useCollection<Transaction>("transactions");
   const { items: installments } = useCollection<Installment>("installments");
@@ -57,7 +59,7 @@ export default function CartaoExtrato() {
   async function removeInstallment(pid: string) {
     if (!user) return;
     if (confirm("Excluir este parcelamento? Todas as parcelas somem.")) {
-      await deleteItem(user.uid, "installments", pid);
+      await deleteItem(activeUid, "installments", pid);
     }
   }
 

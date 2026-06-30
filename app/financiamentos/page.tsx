@@ -4,6 +4,7 @@ import { useState } from "react";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import { useAuth } from "@/lib/auth";
+import { useAccount } from "@/lib/account";
 import { useCollection } from "@/lib/useCollection";
 import { addItem, updateItem, deleteItem } from "@/lib/db";
 import { Money } from "@/lib/money";
@@ -22,6 +23,7 @@ const EMPTY = {
 
 export default function FinanciamentosPage() {
   const { user } = useAuth();
+  const { activeUid } = useAccount();
   const { items: financings, loading } = useCollection<Financing>("financings");
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -50,14 +52,14 @@ export default function FinanciamentosPage() {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
-    if (editingId) await updateItem(user.uid, "financings", editingId, { ...form });
-    else await addItem(user.uid, "financings", form);
+    if (editingId) await updateItem(activeUid, "financings", editingId, { ...form });
+    else await addItem(activeUid, "financings", form);
     setOpen(false);
   }
 
   async function payInstallment(f: Financing) {
     if (!user || f.paidInstallments >= f.installments) return;
-    await updateItem(user.uid, "financings", f.id, {
+    await updateItem(activeUid, "financings", f.id, {
       paidInstallments: f.paidInstallments + 1,
     });
   }
@@ -65,7 +67,7 @@ export default function FinanciamentosPage() {
   async function remove(id: string) {
     if (!user) return;
     if (confirm("Excluir este financiamento?")) {
-      await deleteItem(user.uid, "financings", id);
+      await deleteItem(activeUid, "financings", id);
     }
   }
 

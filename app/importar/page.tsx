@@ -3,6 +3,7 @@
 import { useState } from "react";
 import AppShell from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
+import { useAccount } from "@/lib/account";
 import { useCollection } from "@/lib/useCollection";
 import { addItem } from "@/lib/db";
 import { formatBRL, formatDate } from "@/lib/format";
@@ -11,6 +12,7 @@ import type { Card } from "@/lib/types";
 
 export default function ImportarPage() {
   const { user } = useAuth();
+  const { activeUid } = useAccount();
   const { items: cards } = useCollection<Card>("cards");
   const [rows, setRows] = useState<(ParsedTxn & { include: boolean })[]>([]);
   const [cardId, setCardId] = useState("");
@@ -36,7 +38,7 @@ export default function ImportarPage() {
     for (const r of rows) {
       if (!r.include) continue;
       const isIncome = r.amount > 0;
-      await addItem(user.uid, "transactions", {
+      await addItem(activeUid, "transactions", {
         description: r.description,
         amount: Math.abs(r.amount),
         date: r.date,

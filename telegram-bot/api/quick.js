@@ -42,11 +42,20 @@ export default async function handler(req, res) {
     const token = authz.startsWith("Bearer ") ? authz.slice(7) : null;
     if (!token) return res.status(401).json({ ok: false, error: "sem token de autenticação" });
 
-    const uid = await verifyUid(token);
+    const callerUid = await verifyUid(token);
     const text = (req.body?.text || "").toString().trim();
     if (!text) return res.status(400).json({ ok: false, error: "texto vazio" });
 
     const firestore = db();
+
+    // Conta onde gravar: a própria, ou a de um dono que me deu acesso (conta compartilhada).
+    let uid = callerUid;
+    const targetUid = req.body?.targetUid;
+    if (targetUid && targetUid !== callerUid) {
+      const member = await firestore.collection("users").doc(targetUid).collection("members").doc(callerUid).get();
+      if (!member.exists) return res.status(403).json({ ok: false, error: "sem acesso a essa conta" });
+      uid = targetUid;
+    }
     const userRef = firestore.collection("users").doc(uid);
 
     let provider;

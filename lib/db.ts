@@ -7,6 +7,7 @@ import {
   setDoc,
   onSnapshot,
   query,
+  where,
   orderBy,
   type QueryConstraint,
 } from "firebase/firestore";
@@ -89,4 +90,49 @@ export async function setDocData(
   data: Record<string, unknown>,
 ) {
   await setDoc(doc(db, "users", uid, name, id), data, { merge: true });
+}
+
+// ----- Compartilhamento / Admin -----
+
+/** Convida alguém (por e-mail) a acessar as MINHAS finanças. */
+export async function setInvite(ownerUid: string, ownerEmail: string, ownerName: string, email: string) {
+  await setDoc(doc(db, "invites", email.toLowerCase()), {
+    ownerUid, ownerEmail, ownerName, access: "full", createdAt: Date.now(),
+  });
+}
+
+export async function deleteInvite(email: string) {
+  await deleteDoc(doc(db, "invites", email.toLowerCase()));
+}
+
+/** Escuta os convites que EU enviei. */
+export function watchMyInvites(
+  ownerUid: string,
+  cb: (items: { id: string; ownerEmail?: string; ownerName?: string }[]) => void,
+) {
+  const q = query(collection(db, "invites"), where("ownerUid", "==", ownerUid));
+  return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+}
+
+/** Escuta as pessoas que já têm acesso às MINHAS finanças. */
+export function watchMembers(
+  ownerUid: string,
+  cb: (items: { id: string; email?: string }[]) => void,
+) {
+  return onSnapshot(collection(db, "users", ownerUid, "members"), (snap) =>
+    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+  );
+}
+
+export async function removeMember(ownerUid: string, memberUid: string) {
+  await deleteDoc(doc(db, "users", ownerUid, "members", memberUid));
+}
+
+/** Lista todos os perfis (para o painel de admin). */
+export function watchProfiles(
+  cb: (items: { id: string; email?: string; name?: string; photoURL?: string; lastLogin?: number }[]) => void,
+) {
+  return onSnapshot(collection(db, "profiles"), (snap) =>
+    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+  );
 }

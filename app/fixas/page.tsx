@@ -4,6 +4,7 @@ import { useState } from "react";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import { useAuth } from "@/lib/auth";
+import { useAccount } from "@/lib/account";
 import { useCollection } from "@/lib/useCollection";
 import { addItem, updateItem, deleteItem } from "@/lib/db";
 import { Money } from "@/lib/money";
@@ -24,6 +25,7 @@ function emptyForm() {
 
 export default function FixasPage() {
   const { user } = useAuth();
+  const { activeUid } = useAccount();
   const { items, loading } = useCollection<Recurring>("recurring");
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -42,8 +44,8 @@ export default function FixasPage() {
     e.preventDefault();
     if (!user) return;
     try {
-      if (editingId) await updateItem(user.uid, "recurring", editingId, { ...form });
-      else await addItem(user.uid, "recurring", form);
+      if (editingId) await updateItem(activeUid, "recurring", editingId, { ...form });
+      else await addItem(activeUid, "recurring", form);
       setOpen(false);
     } catch {
       alert("Não foi possível salvar.");
@@ -53,7 +55,7 @@ export default function FixasPage() {
   async function remove(id: string) {
     if (!user) return;
     if (confirm("Excluir esta conta fixa? Ela deixa de aparecer nos próximos meses.")) {
-      await deleteItem(user.uid, "recurring", id);
+      await deleteItem(activeUid, "recurring", id);
     }
   }
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useAccount } from "@/lib/account";
 
 // URL do projeto do robô na Vercel (onde está a rota /api/quick).
 // Se o domínio do robô mudar, ajuste aqui (ou defina NEXT_PUBLIC_BOT_URL).
@@ -9,6 +10,7 @@ const BOT_URL = process.env.NEXT_PUBLIC_BOT_URL || "https://felipe-financeiro-1a
 
 export default function QuickAdd() {
   const { user } = useAuth();
+  const { activeUid } = useAccount();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -23,7 +25,7 @@ export default function QuickAdd() {
       const res = await fetch(`${BOT_URL}/api/quick`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, targetUid: activeUid }),
       });
       const data = await res.json();
       if (data.ok) {
