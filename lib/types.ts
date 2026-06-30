@@ -3,13 +3,18 @@
 
 export type CardBrand = "visa" | "mastercard" | "elo" | "amex" | "hipercard" | "outro";
 
+/** credito: fatura mensal (vencimento). alimentacao: vale refeição/alimentação (saldo, recebimento). */
+export type CardKind = "credito" | "alimentacao";
+
 export interface Card {
   id: string;
-  name: string; // ex: "Nubank", "Itaú Click"
+  name: string; // ex: "Nubank", "Itaú Click", "Caju"
   brand: CardBrand;
-  limit: number; // limite total
-  closingDay: number; // dia do fechamento da fatura (1-31)
-  dueDay: number; // dia do vencimento (1-31)
+  kind: CardKind; // crédito ou alimentação/refeição
+  limit: number; // limite total (crédito) ou saldo mensal (alimentação)
+  closingDay: number; // dia do fechamento da fatura (crédito)
+  dueDay: number; // dia do vencimento (crédito)
+  receivingDay: number; // dia do recebimento do benefício (alimentação)
   color: string; // cor para identificar visualmente (hex)
   createdAt: number;
 }
@@ -36,6 +41,7 @@ export interface Transaction {
   category: string;
   type: TransactionType; // despesa, receita ou pagamento de fatura/parcela
   cardId?: string; // se foi gasto no cartão
+  cardKind?: CardKind; // tipo do cartão no momento do gasto (para cálculo da fatura)
   financingId?: string; // se é parcela de financiamento
   paid: boolean; // já foi pago/quitado?
   createdAt: number;

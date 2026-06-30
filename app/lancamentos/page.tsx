@@ -76,6 +76,7 @@ export default function LancamentosPage() {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
+    const card = cards.find((c) => c.id === form.cardId);
     const data = {
       description: form.description,
       amount: form.amount,
@@ -83,7 +84,7 @@ export default function LancamentosPage() {
       category: form.category,
       type: form.type,
       paid: form.paid,
-      ...(form.cardId ? { cardId: form.cardId } : {}),
+      ...(form.cardId ? { cardId: form.cardId, cardKind: card?.kind ?? "credito" } : {}),
     };
     if (editingId) await updateItem(user.uid, "transactions", editingId, data);
     else await addItem(user.uid, "transactions", data);

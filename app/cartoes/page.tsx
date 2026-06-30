@@ -1,16 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import Modal from "@/components/Modal";
 import BankLogo from "@/components/BankLogo";
 import { detectBank } from "@/lib/banks";
+import { cardUsed } from "@/lib/cards";
 import { useAuth } from "@/lib/auth";
 import { useCollection } from "@/lib/useCollection";
 import { addItem, updateItem, deleteItem } from "@/lib/db";
 import { Money } from "@/lib/money";
-import { currentMonth, effectiveMonth } from "@/lib/format";
-import type { Card, CardBrand, Transaction } from "@/lib/types";
+import { currentMonth } from "@/lib/format";
+import type { Card, CardBrand, CardKind, Transaction } from "@/lib/types";
 
 const BRANDS: { value: CardBrand; label: string }[] = [
   { value: "visa", label: "Visa" },
@@ -22,7 +24,8 @@ const BRANDS: { value: CardBrand; label: string }[] = [
 ];
 
 const EMPTY = {
-  name: "", brand: "mastercard" as CardBrand, limit: 0, closingDay: 1, dueDay: 10, color: "#10b981",
+  name: "", brand: "mastercard" as CardBrand, kind: "credito" as CardKind,
+  limit: 0, closingDay: 1, dueDay: 10, receivingDay: 5, color: "#2563eb",
 };
 
 export default function CartoesPage() {
@@ -34,20 +37,14 @@ export default function CartoesPage() {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
 
-  const spendByCard = useMemo(() => {
-    const month = currentMonth();
-    const map: Record<string, number> = {};
-    for (const t of txns) {
-      if (t.type === "expense" && t.cardId && effectiveMonth(t) === month) {
-        map[t.cardId] = (map[t.cardId] ?? 0) + t.amount;
-      }
-    }
-    return map;
-  }, [txns]);
+  const month = currentMonth();
 
   function openNew() { setForm(EMPTY); setEditingId(null); setOpen(true); }
   function openEdit(c: Card) {
-    setForm({ name: c.name, brand: c.brand, limit: c.limit, closingDay: c.closingDay, dueDay: c.dueDay, color: c.color });
+    setForm({
+      name: c.name, brand: c.brand, kind: c.kind ?? "credito", limit: c.limit,
+      closingDay: c.closingDay ?? 1, dueDay: c.dueDay ?? 10, receivingDay: c.receivingDay ?? 5, color: c.color,
+    });
     setEditingId(c.id); setOpen(true);
   }
 
@@ -91,27 +88,31 @@ export default function CartoesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {cards.map((c) => {
-            const spent = spendByCard[c.id] ?? 0;
-            const pct = c.limit > 0 ? Math.min(100, (spent / c.limit) * 100) : 0;
+            const isMeal = c.kind === "alimentacao";
+            const used = cardUsed(c, txns, month);
+            const pct = c.limit > 0 ? Math.min(100, (used / c.limit) * 100) : 0;
+            const balance = c.limit - used;
             return (
               <div key={c.id} className="overflow-hidden rounded-2xl shadow-md">
-                {/* "cartão" colorido */}
-                <div className="relative p-4 text-white" style={{ background: `linear-gradient(135deg, ${c.color}, ${shade(c.color)})` }}>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs uppercase tracking-wider text-white/70">{c.brand}</p>
-                      <p className="mt-0.5 text-lg font-semibold">{c.name}</p>
+                {/* "cartão" colorido (clique abre o extrato) */}
+                <Link href={`/cartao?id=${c.id}`} className="block">
+                  <div className="relative p-4 text-white" style={{ background: `linear-gradient(135deg, ${c.color}, ${shade(c.color)})` }}>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-xs uppercase tracking-wider text-white/70">{isMeal ? "Alimentação" : c.brand}</p>
+                        <p className="mt-0.5 text-lg font-semibold">{c.name}</p>
+                      </div>
+                      <BankLogo name={c.name} size={40} />
                     </div>
-                    <BankLogo name={c.name} size={40} />
+                    <p className="mt-6 text-sm text-white/80">{isMeal ? "Saldo disponível" : "Fatura em aberto"}</p>
+                    <p className="text-2xl font-bold"><Money value={isMeal ? balance : used} /></p>
                   </div>
-                  <p className="mt-6 text-sm text-white/80">Fatura do mês</p>
-                  <p className="text-2xl font-bold"><Money value={spent} /></p>
-                </div>
+                </Link>
                 {/* rodapé branco */}
                 <div className="bg-white p-4">
                   <div className="flex justify-between text-xs text-slate-400">
-                    <span>Limite <Money value={c.limit} /></span>
-                    <span>Fecha {c.closingDay} · Vence {c.dueDay}</span>
+                    <span>{isMeal ? "Usado" : "Limite usado"} <Money value={used} /> / <Money value={c.limit} /></span>
+                    <span>{isMeal ? `Recebe dia ${c.receivingDay}` : `Fecha ${c.closingDay} · Vence ${c.dueDay}`}</span>
                   </div>
                   <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100">
                     <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: c.color }} />
@@ -142,26 +143,46 @@ export default function CartoesPage() {
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Bandeira">
-              <select value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value as CardBrand })} className="input">
-                {BRANDS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
+            <Field label="Tipo">
+              <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as CardKind })} className="input">
+                <option value="credito">Crédito</option>
+                <option value="alimentacao">Alimentação / Refeição</option>
               </select>
             </Field>
-            <Field label="Limite (R$)">
+            <Field label={form.kind === "alimentacao" ? "Saldo mensal (R$)" : "Limite (R$)"}>
               <input type="number" min={0} step="0.01" value={form.limit} onChange={(e) => setForm({ ...form, limit: Number(e.target.value) })} className="input" />
             </Field>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <Field label="Fecha dia">
-              <input type="number" min={1} max={31} value={form.closingDay} onChange={(e) => setForm({ ...form, closingDay: Number(e.target.value) })} className="input" />
-            </Field>
-            <Field label="Vence dia">
-              <input type="number" min={1} max={31} value={form.dueDay} onChange={(e) => setForm({ ...form, dueDay: Number(e.target.value) })} className="input" />
-            </Field>
-            <Field label="Cor">
-              <input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className="h-[42px] w-full rounded-xl border border-slate-200" />
-            </Field>
-          </div>
+
+          {form.kind === "alimentacao" ? (
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Recebe dia">
+                <input type="number" min={1} max={31} value={form.receivingDay} onChange={(e) => setForm({ ...form, receivingDay: Number(e.target.value) })} className="input" />
+              </Field>
+              <Field label="Cor">
+                <input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className="h-[42px] w-full rounded-xl border border-slate-200" />
+              </Field>
+            </div>
+          ) : (
+            <>
+              <Field label="Bandeira">
+                <select value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value as CardBrand })} className="input">
+                  {BRANDS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
+                </select>
+              </Field>
+              <div className="grid grid-cols-3 gap-3">
+                <Field label="Fecha dia">
+                  <input type="number" min={1} max={31} value={form.closingDay} onChange={(e) => setForm({ ...form, closingDay: Number(e.target.value) })} className="input" />
+                </Field>
+                <Field label="Vence dia">
+                  <input type="number" min={1} max={31} value={form.dueDay} onChange={(e) => setForm({ ...form, dueDay: Number(e.target.value) })} className="input" />
+                </Field>
+                <Field label="Cor">
+                  <input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className="h-[42px] w-full rounded-xl border border-slate-200" />
+                </Field>
+              </div>
+            </>
+          )}
           <button type="submit" disabled={saving} className="btn-primary w-full">{saving ? "Salvando…" : "Salvar"}</button>
         </form>
       </Modal>

@@ -30,6 +30,14 @@ const BANKS: BankBrand[] = [
   { match: /sicoob/i, name: "Sicoob", color: "#003641", domain: "sicoob.com.br" },
   { match: /sicredi/i, name: "Sicredi", color: "#3fa535", domain: "sicredi.com.br" },
   { match: /ame(\b|rica)/i, name: "Ame", color: "#ff0073", domain: "amedigital.com" },
+  // Vale refeição / alimentação
+  { match: /caju/i, name: "Caju", color: "#ff5436", domain: "caju.com.br" },
+  { match: /alelo/i, name: "Alelo", color: "#e30613", domain: "alelo.com.br" },
+  { match: /\bvr\b|vale refei/i, name: "VR", color: "#007a3e", domain: "vr.com.br" },
+  { match: /sodexo|pluxee/i, name: "Pluxee", color: "#221c46", domain: "pluxee.com.br" },
+  { match: /ticket/i, name: "Ticket", color: "#e2001a", domain: "ticket.com.br" },
+  { match: /flash/i, name: "Flash", color: "#ff4338", domain: "flashapp.com.br" },
+  { match: /\bben\b|benvisa/i, name: "Ben", color: "#00a3e0", domain: "benbeneficios.com.br" },
 ];
 
 export function detectBank(name: string): BankBrand | null {

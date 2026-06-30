@@ -61,11 +61,12 @@ export async function registerEntry(userRef, parsed, text, cards) {
   }
 
   // --- Lançamento normal ---
-  let cardId;
+  let card;
   if (parsed.cardName) {
-    const m = (cards || []).find((c) => norm(c.name) === norm(parsed.cardName));
-    if (m) cardId = m.id;
+    card = (cards || []).find((c) => norm(c.name) === norm(parsed.cardName))
+      || (cards || []).find((c) => norm(c.name).includes(norm(parsed.cardName)));
   }
+  const cardId = card?.id;
   const transaction = {
     description: parsed.description,
     amount,
@@ -75,7 +76,7 @@ export async function registerEntry(userRef, parsed, text, cards) {
     paid: cardId ? false : true,
     createdAt: Date.now(),
     source: "chat",
-    ...(cardId ? { cardId } : {}),
+    ...(cardId ? { cardId, cardKind: card.kind || "credito" } : {}),
   };
   await userRef.collection("transactions").add(transaction);
   const cardLabel = cardId ? ` (${parsed.cardName})` : "";

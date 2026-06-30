@@ -9,6 +9,7 @@ import { useCollection } from "@/lib/useCollection";
 import { Money } from "@/lib/money";
 import { formatDate, currentMonth, effectiveMonth, addMonth } from "@/lib/format";
 import { recurringForMonth } from "@/lib/recurring";
+import { cardUsed } from "@/lib/cards";
 import type { Card, Financing, Transaction, Recurring } from "@/lib/types";
 
 const CAT_STYLE: Record<string, { c: string; e: string }> = {
@@ -32,7 +33,7 @@ export default function Dashboard() {
   const { items: financings } = useCollection<Financing>("financings");
   const { items: txns } = useCollection<Transaction>("transactions", true);
   const { items: recurring } = useCollection<Recurring>("recurring");
-  useCollection<Card>("cards"); // mantém o cache aquecido
+  const { items: cards } = useCollection<Card>("cards");
 
   const [month, setMonth] = useState(currentMonth());
   const firstName = (user?.displayName || "").split(" ")[0] || "por aqui";
@@ -121,6 +122,38 @@ export default function Dashboard() {
         <Action href="/financiamentos" label="Financ." bg="bg-amber-50" fg="text-amber-600" icon={<BankIcon />} />
         <Action href="/importar" label="Importar" bg="bg-emerald-50" fg="text-emerald-600" icon={<UpIcon />} />
       </div>
+
+      {/* Meus cartões */}
+      {cards.length > 0 && (
+        <>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="font-semibold text-slate-800">Meus cartões</h2>
+            <Link href="/cartoes" className="text-xs font-medium text-blue-600 hover:underline">ver todos</Link>
+          </div>
+          <div className="mb-6 space-y-2">
+            {cards.map((c) => {
+              const used = cardUsed(c, txns, currentMonth());
+              const pct = c.limit > 0 ? Math.min(100, (used / c.limit) * 100) : 0;
+              const isMeal = c.kind === "alimentacao";
+              return (
+                <Link key={c.id} href={`/cartao?id=${c.id}`} className="card flex items-center gap-3 p-3">
+                  <span className="h-9 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: c.color }} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-slate-800">{c.name}</p>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: c.color }} />
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right text-sm">
+                    <p className="font-semibold text-slate-700"><Money value={used} /></p>
+                    <p className="text-xs text-slate-400">{isMeal ? "saldo " : "limite "}<Money value={c.limit} /></p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* Gastos por categoria */}
       <h2 className="mb-2 font-semibold text-slate-800">Gastos por categoria</h2>
