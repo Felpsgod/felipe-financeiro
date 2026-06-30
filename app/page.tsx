@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import QuickAdd from "@/components/QuickAdd";
 import { useAuth } from "@/lib/auth";
 import { useCollection } from "@/lib/useCollection";
 import { Money } from "@/lib/money";
-import { formatDate, currentMonth } from "@/lib/format";
+import { formatDate, currentMonth, effectiveMonth, addMonth } from "@/lib/format";
 import type { Card, Financing, Transaction } from "@/lib/types";
 
 const CAT_STYLE: Record<string, { c: string; e: string }> = {
@@ -32,11 +32,11 @@ export default function Dashboard() {
   const { items: txns } = useCollection<Transaction>("transactions", true);
   useCollection<Card>("cards"); // mantém o cache aquecido
 
-  const month = currentMonth();
+  const [month, setMonth] = useState(currentMonth());
   const firstName = (user?.displayName || "").split(" ")[0] || "por aqui";
 
   const s = useMemo(() => {
-    const ofMonth = txns.filter((t) => t.date?.startsWith(month));
+    const ofMonth = txns.filter((t) => effectiveMonth(t) === month);
     let income = 0, expense = 0;
     const byCat: Record<string, number> = {};
     for (const t of ofMonth) {
@@ -71,8 +71,15 @@ export default function Dashboard() {
         )}
         <div>
           <p className="text-lg font-bold text-slate-800">Olá, {firstName}!</p>
-          <p className="text-xs capitalize text-slate-400">{monthLabel(month)}</p>
+          <p className="text-xs text-slate-400">Suas finanças</p>
         </div>
+      </div>
+
+      {/* Seletor de mês */}
+      <div className="mb-4 flex items-center justify-center gap-2">
+        <button onClick={() => setMonth(addMonth(month, -1))} className="btn-ghost text-lg" aria-label="Mês anterior">‹</button>
+        <span className="min-w-40 text-center text-sm font-semibold capitalize text-slate-700">{monthLabel(month)}</span>
+        <button onClick={() => setMonth(addMonth(month, 1))} className="btn-ghost text-lg" aria-label="Próximo mês">›</button>
       </div>
 
       {/* Cartão de saldo */}

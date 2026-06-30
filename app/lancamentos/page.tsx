@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { useCollection } from "@/lib/useCollection";
 import { addItem, updateItem, deleteItem } from "@/lib/db";
 import { Money } from "@/lib/money";
-import { formatDate, today, currentMonth } from "@/lib/format";
+import { formatDate, today, currentMonth, effectiveMonth } from "@/lib/format";
 import { CATEGORIES, type Card, type Transaction, type TransactionType } from "@/lib/types";
 
 function emptyForm() {
@@ -34,7 +34,7 @@ export default function LancamentosPage() {
   const cardName = (id?: string) => cards.find((c) => c.id === id)?.name;
 
   const filtered = useMemo(
-    () => txns.filter((t) => t.date?.startsWith(month)),
+    () => txns.filter((t) => effectiveMonth(t) === month),
     [txns, month],
   );
 

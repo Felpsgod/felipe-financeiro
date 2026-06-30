@@ -38,5 +38,6 @@ export function detectBank(name: string): BankBrand | null {
 }
 
 export function bankLogoUrl(domain: string): string {
-  return `https://logo.clearbit.com/${domain}`;
+  // Serviço de ícones do Google — confiável e gratuito; puxa o logo do banco.
+  return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
 }

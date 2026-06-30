@@ -41,30 +41,59 @@ function parseAmount(text) {
   return isNaN(n) ? 0 : n;
 }
 
-function parseLocal(text, cardNames) {
-  const t = text.toLowerCase();
+// Remove acentos e baixa a caixa, para comparar "Itaú" com "itau".
+const DIACRITICS = new RegExp("[\\u0300-\\u036f]", "g");
+function norm(s) {
+  return (s || "").normalize("NFD").replace(DIACRITICS, "").toLowerCase();
+}
 
-  const isIncome = /recebi|ganhei|sal[áa]rio|entrou|recebimento|pix recebido|vendi|caiu/.test(t);
+/** Extrai a descrição (o "lugar"), tirando valor, verbo e a menção do banco. */
+function buildDescription(text, cardName) {
+  let d = text.replace(/r\$/gi, " ");
+  d = d.replace(/\d[\d.,]*/, " ");                       // remove o valor
+  d = d.replace(/\b(reais|real|conto|pila)\b/gi, " ");
+  d = d.replace(/^\s*(gastei|paguei|comprei|gasto|recebi|ganhei|paguei de|comprei em|foi)\b/i, " ");
+
+  // Remove a última menção "no/na/em <banco>" se corresponder ao cartão.
+  if (cardName) {
+    const m = d.match(/^(.*\S)\s+(?:no|na|em|pelo|pela|cart[ãa]o)\s+(\S.*)$/i);
+    if (m) {
+      const after = norm(m[2]);
+      const card0 = norm(cardName.split(/\s+/)[0]);
+      if (after.includes(card0) || norm(cardName).includes(after)) d = m[1];
+    }
+  }
+
+  d = d.replace(/^\s*(no|na|em|de|do|da)\s+/i, " ").replace(/\s+/g, " ").trim();
+  return d ? d.charAt(0).toUpperCase() + d.slice(1) : null;
+}
+
+function parseLocal(text, cardNames) {
+  const t = norm(text);
+
+  const isIncome = /recebi|ganhei|salario|entrou|recebimento|pix recebido|vendi|caiu/.test(t);
   const isPayment = !isIncome && /fatura|parcela/.test(t);
   const type = isIncome ? "income" : isPayment ? "payment" : "expense";
 
   let category = "Outros";
   for (const [cat, re] of CAT_RULES) {
-    if (re.test(t)) { category = cat; break; }
+    if (re.test(text)) { category = cat; break; }
   }
   if (isIncome && category === "Outros") category = "Salário";
 
+  // Cartão: casa pelo nome cadastrado (sem acento).
   let cardName = null;
   for (const name of cardNames) {
-    if (name && t.includes(name.toLowerCase())) { cardName = name; break; }
+    if (name && t.includes(norm(name))) { cardName = name; break; }
   }
 
-  // Data: hoje, ou "ontem".
   const now = new Date();
   if (/ontem/.test(t)) now.setDate(now.getDate() - 1);
   const date = now.toISOString().slice(0, 10);
 
-  const description = text.trim().charAt(0).toUpperCase() + text.trim().slice(1);
+  const description =
+    buildDescription(text, cardName) ||
+    (text.trim().charAt(0).toUpperCase() + text.trim().slice(1));
 
   return { description, amount: parseAmount(text), type, category, cardName, date };
 }

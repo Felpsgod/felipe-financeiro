@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { useCollection } from "@/lib/useCollection";
 import { addItem, updateItem, deleteItem } from "@/lib/db";
 import { Money } from "@/lib/money";
-import { currentMonth } from "@/lib/format";
+import { currentMonth, effectiveMonth } from "@/lib/format";
 import type { Card, CardBrand, Transaction } from "@/lib/types";
 
 const BRANDS: { value: CardBrand; label: string }[] = [
@@ -38,7 +38,7 @@ export default function CartoesPage() {
     const month = currentMonth();
     const map: Record<string, number> = {};
     for (const t of txns) {
-      if (t.type === "expense" && t.cardId && t.date?.startsWith(month)) {
+      if (t.type === "expense" && t.cardId && effectiveMonth(t) === month) {
         map[t.cardId] = (map[t.cardId] ?? 0) + t.amount;
       }
     }

@@ -48,7 +48,7 @@ export default function QuickAdd() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Ex: Gastei 100 no Itaú"
-          className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-slate-800 outline-none"
+          className="min-w-0 flex-1 bg-transparent px-3 py-2 text-base text-slate-800 outline-none"
         />
         <button type="submit" disabled={busy || !text.trim()} className="btn-primary shrink-0 !rounded-xl !px-4 !py-2">
           {busy ? "…" : "Registrar"}
